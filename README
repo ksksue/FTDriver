@@ -1,0 +1,8 @@
+Twitter ID : @ksksue
+
+- Serial Driver
+ FTDriver : FTDI Driver Library Project
+
+- Sample Project
+ FTSampleTerminal : Very very simple terminal
+ FTSerialCSV : Serial communication with Genet educational board (www.genet-nara.jp) in CSV format
