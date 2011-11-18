@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:id="@+id/TempLightContainer" android:layout_width="fill_parent"
+	android:orientation="horizontal" android:layout_height="wrap_content"
+	android:paddingLeft="5dip">
+	<LinearLayout android:id="@+id/TempContainer"
+		android:layout_width="fill_parent" android:orientation="vertical"
+		android:layout_weight="1" android:layout_height="wrap_content">
+		<TextView android:id="@+id/tempLabel" android:text="温度"
+			style="@style/DemoKitControlLabel" android:gravity="center"
+			android:layout_weight="1"></TextView>
+		<LinearLayout android:id="@+id/lightPercentValueContainer"
+			android:layout_width="fill_parent" android:orientation="horizontal"
+			android:layout_height="wrap_content">
+		<TextView
+		    android:id="@+id/tvTemp"
+		    style="@style/DemoKitMeasurement"
+		    android:text="45" >
+		</TextView>
+		<TextView android:id="@+id/TempSuffix" style="@style/DemoKitMeasurementSuffix"
+			android:gravity="top" android:text="℃"></TextView>
+		</LinearLayout>
+	</LinearLayout>
+	<LinearLayout android:id="@+id/HumidContainer"
+		android:layout_width="fill_parent" android:orientation="vertical"
+		android:layout_weight="1" android:layout_height="wrap_content">
+		<TextView android:id="@+id/humidLabel" android:text="湿度"
+			style="@style/DemoKitControlLabel" android:gravity="center"
+			android:layout_weight="1"></TextView>
+
+		<LinearLayout android:id="@+id/lightPercentValueContainer"
+			android:layout_width="fill_parent" android:orientation="horizontal"
+			android:layout_height="wrap_content">
+			<TextView android:text="20" android:id="@+id/tvHumid"
+			style="@style/DemoKitMeasurement"></TextView>
+			<TextView android:id="@+id/HumidPercentSuffix" style="@style/DemoKitMeasurementSuffix"
+				android:gravity="top" android:text="％"></TextView>
+		</LinearLayout>
+		
+	</LinearLayout>
+		<LinearLayout android:id="@+id/LightContainer"
+		android:layout_width="fill_parent" android:orientation="vertical"
+		android:layout_weight="1" android:layout_height="wrap_content">
+		<TextView android:id="@+id/lightPercentLabel" android:text="照度"
+			style="@style/DemoKitControlLabel" android:gravity="center"
+			android:layout_weight="1"></TextView>
+		<LinearLayout android:id="@+id/lightPercentValueContainer"
+			android:layout_width="fill_parent" android:orientation="horizontal"
+			android:layout_height="wrap_content">
+			<TextView android:text="23" android:id="@+id/tvIllumi"
+				style="@style/DemoKitMeasurement"></TextView>
+			<TextView android:id="@+id/lightPercentSuffix" style="@style/DemoKitMeasurementSuffix"
+				android:gravity="top" android:text="lx"></TextView>
+		</LinearLayout>
+	</LinearLayout>
+</LinearLayout>
+

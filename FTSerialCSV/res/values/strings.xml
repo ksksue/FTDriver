@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="Temperature"></string>
+    <string name="Humidity"></string>
+    <string name="Illuminance"></string>
+    <string name="app_name">FTSerialCSV</string>
+
+</resources>

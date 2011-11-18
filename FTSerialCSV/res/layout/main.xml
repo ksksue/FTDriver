@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical" >
+    
+	<ImageButton android:background="@null" android:id="@+id/btAndroid"
+		style="@style/DemoKitButtonDisplay" android:src="@drawable/indicator_button_capacitive_off_noglow"></ImageButton>
+	
+	<include layout="@layout/templightcontainer" android:id="@+id/TempLightContainer_ref"
+		android:layout_width="match_parent" android:layout_height="wrap_content"
+		android:layout_weight="1" />
+	
+    <LinearLayout
+        android:id="@+id/linearLayout1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="bottom|left|right"
+        android:orientation="horizontal" >
+
+        <Button
+            android:id="@+id/btSpeakerOff"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Speaker" />
+        <Button
+            android:id="@+id/btSpeaker1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Speaker 1" />
+        <Button
+            android:id="@+id/btSpeaker2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Speaker 2" />
+        <Button
+            android:id="@+id/btSpeaker3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Speaker 3" />
+        
+    	<Button
+            android:id="@+id/btLED1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="LED1" />
+
+  	 	<Button
+            android:id="@+id/btLED2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="LED2" />
+    	
+    	<Button
+            android:id="@+id/btLCDup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="LCD1" />
+    	
+    	<Button
+            android:id="@+id/btLCDdown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="LCD2" />
+    	
+    	<Button
+            android:id="@+id/btRTC"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="RTC" />
+    		
+    	</LinearLayout>
+
+        <EditText
+            android:id="@+id/etWrite"
+            android:layout_width="1041dp"
+            android:layout_height="wrap_content" >
+
+<!--            <requestFocus />-->
+        </EditText>
+        
+</LinearLayout>
