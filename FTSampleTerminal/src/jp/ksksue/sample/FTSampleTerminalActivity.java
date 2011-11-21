@@ -56,7 +56,7 @@ public class FTSampleTerminalActivity extends Activity {
         filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
         registerReceiver(mUsbReceiver, filter);
         
-        if(mSerial.begin(9600)) {	// now only 9600 supported
+        if(mSerial.begin(FTDriver.BAUD115200)) {
         	mainloop();
         }
         

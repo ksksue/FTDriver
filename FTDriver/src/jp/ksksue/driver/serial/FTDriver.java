@@ -27,12 +27,14 @@ public class FTDriver {
     private static final int FTDI_VID = 0x0403;
     private static final int FTDI_PID = 0x6001;
 
-    private static final int FTDI_RESET_REQUEST = 0;
-    private static final int FTDI_RESET_REQUEST_TYPE = 0x40;
-    private static final int FTDI_RESET_SIO = 0;
-    private static final int FTDI_RESET_PURGE_RX = 1;
-    private static final int FTDI_RESET_PURGE_TX = 2;
-    
+    public static final int BAUD9600	= 9600;
+    public static final int BAUD14400	= 14400;
+    public static final int BAUD19200	= 19200;
+    public static final int BAUD38400	= 38400;
+    public static final int BAUD57600	= 57600;
+    public static final int BAUD115200	= 115200;
+    public static final int BAUD230400	= 230400;
+
     private static final String TAG = "FTDriver";
 
     private UsbManager mManager;
@@ -130,12 +132,46 @@ public class FTDriver {
 
     // Initial control transfer
 	private void initFTDIChip(UsbDeviceConnection conn,int baudrate) {
+		int baud = calcFTDIBaudrate(baudrate);
 		conn.controlTransfer(0x40, 0, 0, 0, null, 0, 0);				//reset
 		conn.controlTransfer(0x40, 0, 1, 0, null, 0, 0);				//clear Rx
 		conn.controlTransfer(0x40, 0, 2, 0, null, 0, 0);				//clear Tx
 		conn.controlTransfer(0x40, 0x02, 0x0000, 0, null, 0, 0);	//flow control none
-		conn.controlTransfer(0x40, 0x03, 0x4138, 0, null, 0, 0);	//baudrate 9600
+		conn.controlTransfer(0x40, 0x03, baud, 0, null, 0, 0);		//set baudrate
 		conn.controlTransfer(0x40, 0x04, 0x0008, 0, null, 0, 0);	//data bit 8, parity none, stop bit 1, tx off
+	}
+	
+	/* Calculate a Divisor at 48MHz
+	 * 9600	: 0x4138
+	 * 11400	: 0xc107
+	 * 19200	: 0x809c
+	 * 38400	: 0xc04e
+	 * 57600	: 0x0034
+	 * 115200	: 0x001a
+	 * 230400	: 0x000d
+	 */
+	private int calcFTDIBaudrate(int baud) {
+		int divisor;
+		if(baud <= 3000000) {
+			divisor = calcFT232bmBaudBaseToDiv(baud, 48000000);
+		} else {
+			Log.e(TAG,"Cannot set baud rate : " + baud + ", because too high." );
+			Log.e(TAG,"Set baud rate : 9600" );
+			divisor = calcFT232bmBaudBaseToDiv(9600, 48000000);
+		}
+		return divisor;
+	}
+
+	// Calculate a divisor from baud rate and base clock for FT232BM, FT2232C and FT232LR
+	// thanks for @titoi2
+	private int calcFT232bmBaudBaseToDiv(int baud, int base) {
+		int divisor;
+		divisor = (base / 16 / baud)
+		| (((base / 2 / baud) & 4) != 0 ? 0x4000 // 0.5
+				: ((base / 2 / baud) & 2) != 0 ? 0x8000 // 0.25
+						: ((base / 2 / baud) & 1) != 0 ? 0xc000 // 0.125
+								: 0);
+		return divisor;
 	}
 	
 	private boolean setFTDIEndpoints(UsbInterface intf) {
