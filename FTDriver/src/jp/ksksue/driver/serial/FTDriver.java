@@ -9,7 +9,7 @@ package jp.ksksue.driver.serial;
 
 /*
  * FT232RL
- * Baudrate : 9600
+ * Baudrate : any
  * RX Data Size up to 60byte
  * TX Data Size up to 64byte
  */
@@ -163,7 +163,7 @@ public class FTDriver {
 	}
 
 	// Calculate a divisor from baud rate and base clock for FT232BM, FT2232C and FT232LR
-	// thanks for @titoi2
+	// thanks to @titoi2
 	private int calcFT232bmBaudBaseToDiv(int baud, int base) {
 		int divisor;
 		divisor = (base / 16 / baud)
