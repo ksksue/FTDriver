@@ -1,7 +1,7 @@
 Android USB Serial Driver
 =====
 
-USB Serial Driver using Android USB Host API
+USB Serial Driver using Android USB Host API  
 
 - java source code
 - no Android root
@@ -12,6 +12,9 @@ USB Serial Driver using Android USB Host API
 Connection
 
     Android [USB A port] --- [USB B port] FTDI Chip
+- requirement
+ - Android : version 3.1 or upper and have USB host port
+ - Board : FTDI Chip
 
 Projects
 -----
@@ -20,7 +23,10 @@ Projects
 
 - Sample Projects  
  **FTSampleTerminal** : very very simple terminal  
- **FTSerialCSV** : serial communication with Genet educational board ([www.genet-nara.jp](www.genet-nara.jp "genet")) in CSV format
+ **FTSerialCSV** : serial communication with Genet educational board ([www.genet-nara.jp](www.genet-nara.jp "genet")) in CSV format (Thanks for Heima Hayashida)  
+![genet](https://lh3.googleusercontent.com/-nj_EGL5D-nY/Tsu-OodpQJI/AAAAAAAABaY/zh6p2mhpg24/s400/DSC_0444.JPG "genet")  
+Fig. Connecting an Android tablet to a Genet board(FT232RL) by one USB cable.(ET2011 Forum in Japan)  
+
 
 Usage
 ----------------
