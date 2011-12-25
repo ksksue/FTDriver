@@ -86,10 +86,10 @@ public class FTDriver {
     		return -1;
     	}
     	
-		len = mDeviceConnection.bulkTransfer(mFTDIEndpointIN, rbuf, 64, 0); // RX
+		len = mDeviceConnection.bulkTransfer(mFTDIEndpointIN, rbuf, buf.length, 0); // RX
 		
 		// FIXME shift rbuf's pointer 2 to 0. (I don't know how to do.) 
-		for(i=0;i<len;++i) {
+		for(i=0;i<len-2;++i) {
 			buf[i] = rbuf[i+2];
 		}
 		return (len-2);
