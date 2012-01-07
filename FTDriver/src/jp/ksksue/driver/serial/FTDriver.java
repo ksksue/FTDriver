@@ -176,6 +176,9 @@ public class FTDriver {
 	
 	private boolean setFTDIEndpoints(UsbInterface intf) {
 		UsbEndpoint epIn,epOut;
+		if(intf == null) {
+			return false;
+		}
     	epIn = intf.getEndpoint(0);
     	epOut = intf.getEndpoint(1);
 		
