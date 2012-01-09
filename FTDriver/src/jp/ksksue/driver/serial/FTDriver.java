@@ -22,10 +22,18 @@ import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
 import android.util.Log;
 
+class UsbId {
+	int mVid;
+	int mPid;
+	UsbId(int vid, int pid){ mVid = vid; mPid = pid; }
+}
+
 public class FTDriver {
 	
-    private static final int FTDI_VID = 0x0403;
-    private static final int FTDI_PID = 0x6001;
+	private static final UsbId[] IDS = {
+		new UsbId(0x0403, 0x6001),	// FT232RL
+		new UsbId(0x0403, 0x6010),	// FT2322C
+	};
 
     public static final int BAUD9600	= 9600;
     public static final int BAUD14400	= 14400;
@@ -55,10 +63,14 @@ public class FTDriver {
 
         for (UsbDevice device :  mManager.getDeviceList().values()) {
         	  Log.i(TAG,"Devices : "+device.toString());
-            UsbInterface intf = findUSBInterfaceByVIDPID(device,FTDI_VID,FTDI_PID);
-            if (setUSBInterface(device, intf)) {
-                break;
-            }
+        	  
+        	  // TODO: support any connections(current version find a first device)
+        	  for (UsbId usbids : IDS) {
+        		  UsbInterface intf = findUSBInterfaceByVIDPID(device,usbids.mVid,usbids.mPid);
+        		  if (setUSBInterface(device, intf)) {
+        			  break;
+        		  }
+        	  }
         }
          
         if(!setFTDIEndpoints(mInterface)){
@@ -210,15 +222,17 @@ public class FTDriver {
                 if (connection.claimInterface(intf, false)) {
                 	Log.d(TAG,"claim interface succeeded");
                 	
-                	if(device.getVendorId() == FTDI_VID && device.getProductId() == FTDI_PID) {
-                    	Log.d(TAG,"Vendor ID : "+device.getVendorId());
-                    	Log.d(TAG,"Product ID : "+device.getProductId());
-                    	mDevice = device;
-                    	mDeviceConnection = connection;
-                    	mInterface = intf;
-                    	return true;
-                    }
-
+                	// TODO: support any connections(current version find a first device)
+                	for(UsbId usbids : IDS) {
+                		if(device.getVendorId() == usbids.mVid && device.getProductId() == usbids.mPid) {
+                			Log.d(TAG,"Vendor ID : "+device.getVendorId());
+                			Log.d(TAG,"Product ID : "+device.getProductId());
+                			mDevice = device;
+                			mDeviceConnection = connection;
+                			mInterface = intf;
+                			return true;
+                		}
+                	}
                 } else {
                     Log.d(TAG,"claim interface failed");
                     connection.close();
@@ -246,14 +260,17 @@ public class FTDriver {
     // when insert the device USB plug into a USB port
 	public boolean usbAttached(Intent intent) {
 		UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
-		UsbInterface intf = findUSBInterfaceByVIDPID(device, FTDI_VID,FTDI_PID);
-		if (intf != null) {
-			Log.d(TAG, "Found USB interface " + intf);
-			setUSBInterface(device, intf);
-			return true;
-		} else {
-			return false;
+
+    	// TODO: support any connections(current version find a first device)
+		for(UsbId usbids : IDS){
+			UsbInterface intf = findUSBInterfaceByVIDPID(device, usbids.mVid, usbids.mPid);
+			if (intf != null) {
+				Log.d(TAG, "Found USB interface " + intf);
+				setUSBInterface(device, intf);
+				return true;
+			}
 		}
+		return false;
 	}
 	
 	// when remove the device USB plug from a USB port
