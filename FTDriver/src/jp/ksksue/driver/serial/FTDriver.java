@@ -5,10 +5,12 @@ package jp.ksksue.driver.serial;
  * Copyright (C) 2011 @ksksue
  * Licensed under the Apache License, Version 2.0
  * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * thanks to @titoi2 @darkukll @yakagawa
  */
 
 /*
- * FT232RL
+ * FT232RL, FT2232C, FT232H
  * Baudrate : any
  * RX Data Size up to 60byte
  * TX Data Size up to 64byte
@@ -22,17 +24,21 @@ import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
 import android.util.Log;
 
+enum FTDICHIPTYPE {FT232RL, FT2232C, FT232H, ; }
 class UsbId {
 	int mVid;
 	int mPid;
-	UsbId(int vid, int pid){ mVid = vid; mPid = pid; }
+	FTDICHIPTYPE mType;
+	UsbId(int vid, int pid, FTDICHIPTYPE type){ mVid = vid; mPid = pid; mType = type;}
 }
 
 public class FTDriver {
 	
+	
 	private static final UsbId[] IDS = {
-		new UsbId(0x0403, 0x6001),	// FT232RL
-		new UsbId(0x0403, 0x6010),	// FT2322C
+		new UsbId(0x0403, 0x6001, FTDICHIPTYPE.FT232RL),	// FT232RL
+		new UsbId(0x0403, 0x6010, FTDICHIPTYPE.FT2232C),	// FT2232C
+		new UsbId(0x0403, 0x6014, FTDICHIPTYPE.FT232H),	// FT232H
 	};
 
     public static final int BAUD9600	= 9600;
@@ -60,7 +66,7 @@ public class FTDriver {
     
     // Open an FTDI USB Device
     public boolean begin(int baudrate) {
-
+    	FTDICHIPTYPE chiptype = FTDICHIPTYPE.FT232RL;
         for (UsbDevice device :  mManager.getDeviceList().values()) {
         	  Log.i(TAG,"Devices : "+device.toString());
         	  
@@ -68,6 +74,9 @@ public class FTDriver {
         	  for (UsbId usbids : IDS) {
         		  UsbInterface intf = findUSBInterfaceByVIDPID(device,usbids.mVid,usbids.mPid);
         		  if (setUSBInterface(device, intf)) {
+        			  Log.i(TAG, "VID:" + usbids.mVid + ", PID:" + usbids.mPid + ", Type:" + usbids.mType);
+        			  Log.d(TAG, "#of Interfaces: " + device.getInterfaceCount());
+        			  chiptype = usbids.mType;
         			  break;
         		  }
         	  }
@@ -76,8 +85,7 @@ public class FTDriver {
         if(!setFTDIEndpoints(mInterface)){
         	return false;
         }
-        
-        initFTDIChip(mDeviceConnection,baudrate);
+        initFTDIChip(mDeviceConnection,baudrate, chiptype);
         
         Log.i(TAG,"Device Serial : "+mDeviceConnection.getSerial());
                 
@@ -143,13 +151,17 @@ public class FTDriver {
     */
 
     // Initial control transfer
-	private void initFTDIChip(UsbDeviceConnection conn,int baudrate) {
-		int baud = calcFTDIBaudrate(baudrate);
+	private void initFTDIChip(UsbDeviceConnection conn,int baudrate, FTDICHIPTYPE chiptype) {
+		int baud = calcFTDIBaudrate(baudrate, chiptype);
+		int index = 0;
+		if(chiptype == FTDICHIPTYPE.FT232H) {
+			index = 0x0200;
+		}
 		conn.controlTransfer(0x40, 0, 0, 0, null, 0, 0);				//reset
 		conn.controlTransfer(0x40, 0, 1, 0, null, 0, 0);				//clear Rx
 		conn.controlTransfer(0x40, 0, 2, 0, null, 0, 0);				//clear Tx
 		conn.controlTransfer(0x40, 0x02, 0x0000, 0, null, 0, 0);	//flow control none
-		conn.controlTransfer(0x40, 0x03, baud, 0, null, 0, 0);		//set baudrate
+		conn.controlTransfer(0x40, 0x03, baud, index, null, 0, 0);		//set baudrate
 		conn.controlTransfer(0x40, 0x04, 0x0008, 0, null, 0, 0);	//data bit 8, parity none, stop bit 1, tx off
 	}
 	
@@ -162,14 +174,24 @@ public class FTDriver {
 	 * 115200	: 0x001a
 	 * 230400	: 0x000d
 	 */
-	private int calcFTDIBaudrate(int baud) {
-		int divisor;
-		if(baud <= 3000000) {
-			divisor = calcFT232bmBaudBaseToDiv(baud, 48000000);
-		} else {
-			Log.e(TAG,"Cannot set baud rate : " + baud + ", because too high." );
-			Log.e(TAG,"Set baud rate : 9600" );
-			divisor = calcFT232bmBaudBaseToDiv(9600, 48000000);
+	private int calcFTDIBaudrate(int baud, FTDICHIPTYPE chiptype) {
+		int divisor = 0;
+		if( chiptype == FTDICHIPTYPE.FT232RL || chiptype == FTDICHIPTYPE.FT2232C ){
+			if(baud <= 3000000) {
+				divisor = calcFT232bmBaudBaseToDiv(baud, 48000000);
+			} else {
+				Log.e(TAG,"Cannot set baud rate : " + baud + ", because too high." );
+				Log.e(TAG,"Set baud rate : 9600" );
+				divisor = calcFT232bmBaudBaseToDiv(9600, 48000000);
+			}
+		}else if (chiptype == FTDICHIPTYPE.FT232H){
+			if(baud <= 12000000 && baud >= 1200) {
+				divisor = calcFT232hBaudBaseToDiv(baud, 120000000);
+			} else {
+				Log.e(TAG,"Cannot set baud rate : " + baud + ", because too high." );
+				Log.e(TAG,"Set baud rate : 9600" );
+				divisor = calcFT232hBaudBaseToDiv(9600, 120000000);
+			}
 		}
 		return divisor;
 	}
@@ -185,7 +207,22 @@ public class FTDriver {
 								: 0);
 		return divisor;
 	}
-	
+	// Calculate a divisor from baud rate and base clock for FT2232H and FT232H
+	// thanks to @yakagawa
+	private int calcFT232hBaudBaseToDiv(int baud, int base) {
+		int divisor3, divisor;
+		divisor  = (base / 10 / baud);
+		divisor3 = divisor * 8;
+		divisor |= ((divisor3 & 4) != 0 ? 0x4000 // 0.5
+				: (divisor3 & 2) != 0 ? 0x8000 // 0.25
+						: (divisor3 & 1) != 0 ? 0xc000 // 0.125
+								: 0);
+
+//		divisor |= 0x00020000;
+		divisor &= 0xffff;
+		return divisor;
+	}
+
 	private boolean setFTDIEndpoints(UsbInterface intf) {
 		UsbEndpoint epIn,epOut;
 		if(intf == null) {
@@ -260,7 +297,6 @@ public class FTDriver {
     // when insert the device USB plug into a USB port
 	public boolean usbAttached(Intent intent) {
 		UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
-
     	// TODO: support any connections(current version find a first device)
 		for(UsbId usbids : IDS){
 			UsbInterface intf = findUSBInterfaceByVIDPID(device, usbids.mVid, usbids.mPid);
