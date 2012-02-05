@@ -23,6 +23,8 @@ import android.widget.TextView;
 import jp.ksksue.driver.serial.*;
 public class FTSampleTerminalActivity extends Activity {
 	
+	final int SERIAL_BAUDRATE = FTDriver.BAUD115200;
+	
 	FTDriver mSerial;
 
 	private TextView mTvSerial;
@@ -56,7 +58,7 @@ public class FTSampleTerminalActivity extends Activity {
         filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
         registerReceiver(mUsbReceiver, filter);
         
-        if(mSerial.begin(FTDriver.BAUD115200)) {
+        if(mSerial.begin(SERIAL_BAUDRATE)) {
         	mainloop();
         }
         
@@ -142,7 +144,7 @@ public class FTSampleTerminalActivity extends Activity {
     		String action = intent.getAction();
     		if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
     			mSerial.usbAttached(intent);
-				mSerial.begin(9600);	// only 9600 supported 
+				mSerial.begin(SERIAL_BAUDRATE);
     			mainloop();
 				
     		} else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
