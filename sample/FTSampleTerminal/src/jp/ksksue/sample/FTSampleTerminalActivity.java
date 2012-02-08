@@ -24,6 +24,9 @@ import jp.ksksue.driver.serial.*;
 public class FTSampleTerminalActivity extends Activity {
 	
 	final int SERIAL_BAUDRATE = FTDriver.BAUD115200;
+	final int mOutputType = 0;
+	
+	final boolean SHOW_LOGCAT = false;
 	
 	FTDriver mSerial;
 
@@ -91,7 +94,7 @@ public class FTSampleTerminalActivity extends Activity {
 		public void run() {
 			int i;
 			int len;
-			byte[] rbuf = new byte[60];
+			byte[] rbuf = new byte[4096];
 						
 			for(;;){//this is the main loop for transferring
 				
@@ -100,23 +103,47 @@ public class FTSampleTerminalActivity extends Activity {
 				//////////////////////////////////////////////////////////
 				len = mSerial.read(rbuf);
 
-				// TODO 行数オーバーした場合、スクロール表示させるよう変更。現状エディットボックスが画面外へ追いやられる。
+				// TODO: UI:Show last line
 				if(len > 0) {
-					Log.i(TAG,"Read  Length : "+len);
+					if(SHOW_LOGCAT) { Log.i(TAG,"Read  Length : "+len); }
 					mText = (String) mTvSerial.getText();
 					for(i=0;i<len;++i) {
-						Log.i(TAG,"Read  Data["+i+"] : "+rbuf[i]);
-						
-						// "\r":CR(0x0D) "\n":LF(0x0A)
-						if(rbuf[i]==0x0D) {							
-							mText = mText + "\r";
-						} else if(rbuf[i]==0x0A) {
-							mText = mText + "\n";
-						} else {
-							mText = mText + "" +(char)rbuf[i];
+						if(SHOW_LOGCAT) { Log.i(TAG,"Read  Data["+i+"] : "+rbuf[i]); }
+						// TODO: change the output type from UI
+						switch(mOutputType) {
+						case 0 : 
+							// "\r":CR(0x0D) "\n":LF(0x0A)
+							if (rbuf[i] == 0x0D) {
+								mText = mText + "\r";
+							} else if (rbuf[i] == 0x0A) {
+								mText = mText + "\n";
+							} else {
+								mText = mText + "" +(char)rbuf[i];
+							}
+							break;
+						case 1 :
+							if (rbuf[i] == 0x0D) {
+								mText = mText + " " + Byte.toString(rbuf[i]) + "\r";
+							} else if (rbuf[i] == 0x0A) {
+								mText = mText + " " + Byte.toString(rbuf[i]) + "\n";
+							} else {
+								mText = mText + " " + Byte.toString(rbuf[i]);
+							}							
+							break;
+						case 2 :
+							if (rbuf[i] == 0x0D) {
+								// TODO: output 2 length character (now not "0D", it's only "D".)
+								mText = mText + " " + Integer.toHexString((int) rbuf[i]) + "\r";
+							} else if (rbuf[i] == 0x0A) {
+								mText = mText + " " + Integer.toHexString((int) rbuf[i]) + "\n";
+							} else {
+								mText = mText + " "
+										+ Integer.toHexString((int) rbuf[i]);
+							}							
+							break;
 						}
 					}
-					// FIXME もっとビューティーホーに書きたい 
+
 					mHandler.post(new Runnable() {
 						public void run() {
 							mTvSerial.setText(mText);
