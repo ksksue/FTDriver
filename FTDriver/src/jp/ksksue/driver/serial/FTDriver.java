@@ -29,22 +29,24 @@ class UsbId {
 	int mVid;
 	int mPid;
 	int mBcdDevice;
+	int mPortNum;
 	FTDICHIPTYPE mType;
-	UsbId(int vid, int pid, int bcdDevice, FTDICHIPTYPE type){ mVid = vid; mPid = pid; mBcdDevice = bcdDevice; mType = type;}
+	UsbId(int vid, int pid, int bcdDevice, int portNum, FTDICHIPTYPE type){ mVid = vid; mPid = pid; mBcdDevice = bcdDevice; mPortNum = portNum; mType = type;}
 }
 
 public class FTDriver {
 	
 	
 	private static final UsbId[] IDS = {
-		new UsbId(0x0403, 0x6001, 6, FTDICHIPTYPE.FT232RL),	// FT232RL
-		new UsbId(0x0403, 0x6014, 0, FTDICHIPTYPE.FT232H),	// FT232H
-		new UsbId(0x0403, 0x6010, 0, FTDICHIPTYPE.FT2232C),	// FT2232C
-		new UsbId(0x0403, 0x6010, 5, FTDICHIPTYPE.FT2232D),	// FT2232D
-		new UsbId(0x0403, 0x6010, 7, FTDICHIPTYPE.FT2232HL),	// FT2232HL
-		new UsbId(0x0403, 0x6011, 8, FTDICHIPTYPE.FT4232HL),	// FT4232HL
+		new UsbId(0x0403, 0x6001, 6, 1, FTDICHIPTYPE.FT232RL),	// FT232RL
+		new UsbId(0x0403, 0x6014, 0, 1, FTDICHIPTYPE.FT232H),	// FT232H
+		new UsbId(0x0403, 0x6010, 0, 2, FTDICHIPTYPE.FT2232C),	// FT2232C
+		new UsbId(0x0403, 0x6010, 5, 2, FTDICHIPTYPE.FT2232D),	// FT2232D
+		new UsbId(0x0403, 0x6010, 7, 2, FTDICHIPTYPE.FT2232HL),	// FT2232HL
+		new UsbId(0x0403, 0x6011, 8, 4, FTDICHIPTYPE.FT4232HL),	// FT4232HL
 	};
-
+    private UsbId mSelectedDeviceInfo;
+	
     public static final int BAUD9600	= 9600;
     public static final int BAUD14400	= 14400;
     public static final int BAUD19200	= 19200;
@@ -52,17 +54,19 @@ public class FTDriver {
     public static final int BAUD57600	= 57600;
     public static final int BAUD115200	= 115200;
     public static final int BAUD230400	= 230400;
-
+    
+    public static final int FTDI_MAX_INTERFACE_NUM = 4;
+    
     private static final String TAG = "FTDriver";
     private final int mPacketSize = 64;
-    
+
     private UsbManager mManager;
     private UsbDevice mDevice;
     private UsbDeviceConnection mDeviceConnection;
-    private UsbInterface mInterface;
+    private UsbInterface[] mInterface = new UsbInterface[FTDI_MAX_INTERFACE_NUM];
 
-    private UsbEndpoint mFTDIEndpointIN;
-    private UsbEndpoint mFTDIEndpointOUT;
+    private UsbEndpoint[] mFTDIEndpointIN;
+    private UsbEndpoint[] mFTDIEndpointOUT;
     
     public static final int READBUF_SIZE = 4096;
     private int mReadbufOffset;
@@ -77,26 +81,26 @@ public class FTDriver {
     
     // Open an FTDI USB Device
     public boolean begin(int baudrate) {
-    	FTDICHIPTYPE chiptype = FTDICHIPTYPE.FT232RL;
-        for (UsbDevice device :  mManager.getDeviceList().values()) {
-        	  Log.i(TAG,"Devices : "+device.toString());
+    	for (UsbDevice device :  mManager.getDeviceList().values()) {
+    		Log.i(TAG,"Devices : "+device.toString());
         	  
-        	  // TODO: support any connections(current version find a first device)
-        	  for (UsbId usbids : IDS) {
-        		  UsbInterface intf = findUSBInterfaceByVIDPID(device,usbids.mVid,usbids.mPid);
-        		  if (setUSBInterface(device, intf)) {
-        			  Log.i(TAG, "VID:" + usbids.mVid + ", PID:" + usbids.mPid + ", Type:" + usbids.mType);
-        			  Log.d(TAG, "#of Interfaces: " + device.getInterfaceCount());
-        			  chiptype = usbids.mType;
-        			  break;
-        		  }
-        	  }
+    		// TODO: support any connections(current version find a first device)
+    		if(getUsbInterfaces(device)) {
+    			break;
+    		}
         }
          
-        if(!setFTDIEndpoints(mInterface)){
+    	if(mSelectedDeviceInfo == null) {
+    		return false;
+    	}
+    	
+		mFTDIEndpointIN = new UsbEndpoint[mSelectedDeviceInfo.mPortNum];
+		mFTDIEndpointOUT = new UsbEndpoint[mSelectedDeviceInfo.mPortNum];
+		
+        if(!setFTDIEndpoints(mInterface,mSelectedDeviceInfo.mPortNum)){
         	return false;
         }
-        initFTDIChip(mDeviceConnection,baudrate, chiptype);
+        initFTDIChip(mDeviceConnection,baudrate);
         
         Log.i(TAG,"Device Serial : "+mDeviceConnection.getSerial());
                 
@@ -105,13 +109,22 @@ public class FTDriver {
 
     // Close the device
     public void end() {
-    	setUSBInterface(null,null);
+    	for(int i=0; i<mSelectedDeviceInfo.mPortNum; ++i) {
+    		setUSBInterface(null,null,i);
+    	}
     }
 
     // Read Binary Data
-    // TODO: BUG : miss data transfer
     public int read(byte[] buf) {
-        if (buf.length <= mReadbufRemain) {
+    	return read(buf,0);
+    }
+    
+    // TODO: BUG : sometimes miss data transfer
+    public int read(byte[] buf, int channel) {
+    	if(channel >= mSelectedDeviceInfo.mPortNum) {
+    		return -1;
+    	}
+    	if (buf.length <= mReadbufRemain) {
 //        	System.arraycopy(mReadbuf, mReadbufOffset, buf, 0, buf.length);
         	for (int i=0; i<buf.length; i++ ) {
         		buf[i] = mReadbuf[mReadbufOffset++];
@@ -128,7 +141,7 @@ public class FTDriver {
 //            	buf[ofst++] = mReadbuf[mReadbufOffset++];
 //            }
         }
-        int len = mDeviceConnection.bulkTransfer(mFTDIEndpointIN, mReadbuf, mReadbuf.length,
+        int len = mDeviceConnection.bulkTransfer(mFTDIEndpointIN[channel], mReadbuf, mReadbuf.length,
                 0); // RX
         int blocks = len / mPacketSize;
         int remain = len % mPacketSize;
@@ -152,20 +165,28 @@ public class FTDriver {
         }
         return ofst;
     }
-
+    
     // Write 1byte Binary Data
     public int write(byte[] buf) {
-		return mDeviceConnection.bulkTransfer(mFTDIEndpointOUT, buf, 1, 0); // TX    	
+    	return write(buf,buf.length,0);
     }
-	
+    	
     // Write n byte Binary Data
     public int write(byte[] buf,int length) {
     	if(length > 64) {
     		return -1;
     	}
-		return mDeviceConnection.bulkTransfer(mFTDIEndpointOUT, buf, length, 0); // TX    	
+    	return write(buf,length,0);
     }
-    
+
+    // Write n byte Binary Data to n channel
+    public int write(byte[] buf, int length, int channel) {
+    	if(channel >= mSelectedDeviceInfo.mPortNum) {
+    		return -1;
+    	}
+		return mDeviceConnection.bulkTransfer(mFTDIEndpointOUT[channel], buf, length, 0); // TX    	
+    }
+
     // TODO Implement these methods
 /*    public void available() {
     	
@@ -188,19 +209,41 @@ public class FTDriver {
     }
     */
 
-    // Initial control transfer
-	private void initFTDIChip(UsbDeviceConnection conn,int baudrate, FTDICHIPTYPE chiptype) {
-		int baud = calcFTDIBaudrate(baudrate, chiptype);
+    public boolean setBaudrate(int baudrate, int channel) {
+		int baud = calcFTDIBaudrate(baudrate, mSelectedDeviceInfo.mType);
 		int index = 0;
-		if(chiptype == FTDICHIPTYPE.FT232H) {
+		
+/*		if(mSelectedDeviceInfo.mType == FTDICHIPTYPE.FT232H) {
 			index = 0x0200;
+		}*/
+		if (mSelectedDeviceInfo.mType == FTDICHIPTYPE.FT2232HL ||
+				mSelectedDeviceInfo.mType == FTDICHIPTYPE.FT4232HL ||
+				mSelectedDeviceInfo.mType == FTDICHIPTYPE.FT232H ) {
+			index = baud >> 8;
+			index &= 0xFF00;
+		} else{
+			index = baud >> 16;
 		}
-		conn.controlTransfer(0x40, 0, 0, 0, null, 0, 0);				//reset
-		conn.controlTransfer(0x40, 0, 1, 0, null, 0, 0);				//clear Rx
-		conn.controlTransfer(0x40, 0, 2, 0, null, 0, 0);				//clear Tx
-		conn.controlTransfer(0x40, 0x02, 0x0000, 0, null, 0, 0);	//flow control none
-		conn.controlTransfer(0x40, 0x03, baud, index, null, 0, 0);		//set baudrate
-		conn.controlTransfer(0x40, 0x04, 0x0008, 0, null, 0, 0);	//data bit 8, parity none, stop bit 1, tx off
+		
+		index |= channel+1;	// Ch.A=1, Ch.B=2, ...
+		
+		mDeviceConnection.controlTransfer(0x40, 0x03, baud, index, null, 0, 0);		//set baudrate
+		
+		// TODO: check error
+		return true;
+    }
+    // Initial control transfer
+	private void initFTDIChip(UsbDeviceConnection conn,int baudrate) {
+		
+		for(int i=0;i < mSelectedDeviceInfo.mPortNum; ++i) {
+			int index = i+1;
+			conn.controlTransfer(0x40, 0, 0, index, null, 0, 0);				//reset
+			conn.controlTransfer(0x40, 0, 1, index, null, 0, 0);				//clear Rx
+			conn.controlTransfer(0x40, 0, 2, index, null, 0, 0);				//clear Tx
+			conn.controlTransfer(0x40, 0x02, 0x0000, index, null, 0, 0);	//flow control none
+			setBaudrate(baudrate, i);
+			conn.controlTransfer(0x40, 0x04, 0x0008, index, null, 0, 0);	//data bit 8, parity none, stop bit 1, tx off
+		}
 	}
 	
 	/* Calculate a Divisor at 48MHz
@@ -261,29 +304,35 @@ public class FTDriver {
 		return divisor;
 	}
 
-	private boolean setFTDIEndpoints(UsbInterface intf) {
-		UsbEndpoint epIn,epOut;
+	private boolean setFTDIEndpoints(UsbInterface[] intf, int portNum) {
+		UsbEndpoint epIn;
+		UsbEndpoint epOut;
+				
 		if(intf == null) {
 			return false;
 		}
-    	epIn = intf.getEndpoint(0);
-    	epOut = intf.getEndpoint(1);
 		
-    	if(epIn != null && epOut != null) {
-    		mFTDIEndpointIN = intf.getEndpoint(0);
-    		mFTDIEndpointOUT = intf.getEndpoint(1);
-    		return true;
-    	} else {
-    		return false;
-    	}
+		for(int i=0; i<portNum; ++i) {
+			epIn = intf[i].getEndpoint(0);
+			epOut = intf[i].getEndpoint(1);
+			
+	    	if(epIn != null && epOut != null) {
+	    		mFTDIEndpointIN[i] = epIn;
+	    		mFTDIEndpointOUT[i] = epOut;
+	    	} else {
+	    		return false;
+	    	}
+		}
+		return true;
+		
 	}
 	
     // Sets the current USB device and interface
-    private boolean setUSBInterface(UsbDevice device, UsbInterface intf) {
+    private boolean setUSBInterface(UsbDevice device, UsbInterface intf, int intfNum) {
         if (mDeviceConnection != null) {
-            if (mInterface != null) {
-                mDeviceConnection.releaseInterface(mInterface);
-                mInterface = null;
+            if (mInterface[intfNum] != null) {
+                mDeviceConnection.releaseInterface(mInterface[intfNum]);
+                mInterface[intfNum] = null;
             }
             mDeviceConnection.close();
             mDevice = null;
@@ -304,7 +353,7 @@ public class FTDriver {
                 			Log.d(TAG,"Product ID : "+device.getProductId());
                 			mDevice = device;
                 			mDeviceConnection = connection;
-                			mInterface = intf;
+                			mInterface[intfNum] = intf;
                 			return true;
                 		}
                 	}
@@ -319,33 +368,43 @@ public class FTDriver {
         
         return false;
     }
-    
+
+    // find any interfaces and set mInterface
+    private boolean getUsbInterfaces(UsbDevice device){
+    	UsbInterface[] intf = new UsbInterface[FTDI_MAX_INTERFACE_NUM];
+		for(UsbId usbids : IDS){
+			intf = findUSBInterfaceByVIDPID(device, usbids.mVid, usbids.mPid);
+			if (intf[0] != null) {
+				for(int i=0; i<usbids.mPortNum; ++i) {
+					Log.d(TAG, "Found USB interface " + intf[i]);
+					setUSBInterface(device, intf[i], i);
+					mSelectedDeviceInfo = usbids;
+				}
+				return true;
+			}
+		}
+		return false;
+    }
     // searches for an interface on the given USB device by VID and PID
-    private UsbInterface findUSBInterfaceByVIDPID(UsbDevice device,int vid, int pid) {
+    private UsbInterface[] findUSBInterfaceByVIDPID(UsbDevice device,int vid, int pid) {
         Log.d(TAG, "findUSBInterface " + device);
+        UsbInterface[] retIntf = new UsbInterface[FTDI_MAX_INTERFACE_NUM];
+        int j=0;
         int count = device.getInterfaceCount();
         for (int i = 0; i < count; i++) {
             UsbInterface intf = device.getInterface(i);
             if (device.getVendorId() == vid && device.getProductId() == pid) {
-                return intf;
+            	retIntf[j]=intf;
+            	++j;
               }
         }
-        return null;
+        return retIntf;
     }
     
     // when insert the device USB plug into a USB port
 	public boolean usbAttached(Intent intent) {
 		UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
-    	// TODO: support any connections(current version find a first device)
-		for(UsbId usbids : IDS){
-			UsbInterface intf = findUSBInterfaceByVIDPID(device, usbids.mVid, usbids.mPid);
-			if (intf != null) {
-				Log.d(TAG, "Found USB interface " + intf);
-				setUSBInterface(device, intf);
-				return true;
-			}
-		}
-		return false;
+		return getUsbInterfaces(device);
 	}
 	
 	// when remove the device USB plug from a USB port
@@ -354,7 +413,7 @@ public class FTDriver {
 		String deviceName = device.getDeviceName();
 		if (mDevice != null && mDevice.equals(deviceName)) {
 			Log.d(TAG, "USB interface removed");
-			setUSBInterface(null, null);
+			setUSBInterface(null, null, 0);
 		}
 	}
 
