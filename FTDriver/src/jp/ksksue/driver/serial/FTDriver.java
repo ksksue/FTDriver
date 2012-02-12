@@ -39,8 +39,8 @@ public class FTDriver {
 	
 	private static final UsbId[] IDS = {
 		new UsbId(0x0403, 0x6001, 6, 1, FTDICHIPTYPE.FT232RL),	// FT232RL
-		new UsbId(0x0403, 0x6014, 0, 1, FTDICHIPTYPE.FT232H),	// FT232H
-		new UsbId(0x0403, 0x6010, 0, 2, FTDICHIPTYPE.FT2232C),	// FT2232C
+		new UsbId(0x0403, 0x6014, 9, 1, FTDICHIPTYPE.FT232H),	// FT232H
+		new UsbId(0x0403, 0x6010, 5, 2, FTDICHIPTYPE.FT2232C),	// FT2232C
 		new UsbId(0x0403, 0x6010, 5, 2, FTDICHIPTYPE.FT2232D),	// FT2232D
 		new UsbId(0x0403, 0x6010, 7, 2, FTDICHIPTYPE.FT2232HL),	// FT2232HL
 		new UsbId(0x0403, 0x6011, 8, 4, FTDICHIPTYPE.FT4232HL),	// FT4232HL
@@ -385,6 +385,7 @@ public class FTDriver {
 		}
 		return false;
     }
+    
     // searches for an interface on the given USB device by VID and PID
     private UsbInterface[] findUSBInterfaceByVIDPID(UsbDevice device,int vid, int pid) {
         Log.d(TAG, "findUSBInterface " + device);
@@ -400,6 +401,14 @@ public class FTDriver {
         }
         return retIntf;
     }
+    
+    // get a device descriptor : bcdDevice
+    // need Android API Level 13
+/*    private int getDescriptorBcdDevice() {
+    	byte[] rowDesc = mDeviceConnection.getRawDescriptors();
+    	return rowDesc[13] << 8 + rowDesc[12];
+    }
+*/    
     
     // when insert the device USB plug into a USB port
 	public boolean usbAttached(Intent intent) {
