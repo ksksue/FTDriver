@@ -24,21 +24,25 @@ import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
 import android.util.Log;
 
-enum FTDICHIPTYPE {FT232RL, FT2232C, FT232H, ; }
+enum FTDICHIPTYPE {FT232RL, FT2232C, FT232H, FT2232D, FT2232HL, FT4232HL ; }
 class UsbId {
 	int mVid;
 	int mPid;
+	int mBcdDevice;
 	FTDICHIPTYPE mType;
-	UsbId(int vid, int pid, FTDICHIPTYPE type){ mVid = vid; mPid = pid; mType = type;}
+	UsbId(int vid, int pid, int bcdDevice, FTDICHIPTYPE type){ mVid = vid; mPid = pid; mBcdDevice = bcdDevice; mType = type;}
 }
 
 public class FTDriver {
 	
 	
 	private static final UsbId[] IDS = {
-		new UsbId(0x0403, 0x6001, FTDICHIPTYPE.FT232RL),	// FT232RL
-		new UsbId(0x0403, 0x6010, FTDICHIPTYPE.FT2232C),	// FT2232C
-		new UsbId(0x0403, 0x6014, FTDICHIPTYPE.FT232H),	// FT232H
+		new UsbId(0x0403, 0x6001, 6, FTDICHIPTYPE.FT232RL),	// FT232RL
+		new UsbId(0x0403, 0x6014, 0, FTDICHIPTYPE.FT232H),	// FT232H
+		new UsbId(0x0403, 0x6010, 0, FTDICHIPTYPE.FT2232C),	// FT2232C
+		new UsbId(0x0403, 0x6010, 5, FTDICHIPTYPE.FT2232D),	// FT2232D
+		new UsbId(0x0403, 0x6010, 7, FTDICHIPTYPE.FT2232HL),	// FT2232HL
+		new UsbId(0x0403, 0x6011, 8, FTDICHIPTYPE.FT4232HL),	// FT4232HL
 	};
 
     public static final int BAUD9600	= 9600;
@@ -50,7 +54,8 @@ public class FTDriver {
     public static final int BAUD230400	= 230400;
 
     private static final String TAG = "FTDriver";
-
+    private final int mPacketSize = 64;
+    
     private UsbManager mManager;
     private UsbDevice mDevice;
     private UsbDeviceConnection mDeviceConnection;
@@ -59,9 +64,15 @@ public class FTDriver {
     private UsbEndpoint mFTDIEndpointIN;
     private UsbEndpoint mFTDIEndpointOUT;
     
-
+    public static final int READBUF_SIZE = 4096;
+    private int mReadbufOffset;
+    private int mReadbufRemain;
+    private byte[] mReadbuf = new byte[READBUF_SIZE];
+    
     public FTDriver(UsbManager manager) {
         mManager = manager;
+        mReadbufOffset = 0;
+        mReadbufRemain = 0;
     }
     
     // Open an FTDI USB Device
@@ -98,21 +109,48 @@ public class FTDriver {
     }
 
     // Read Binary Data
+    // TODO: BUG : miss data transfer
     public int read(byte[] buf) {
-    	int i,len;
-    	byte[] rbuf = new byte[64];
-    	
-    	if(buf.length > 64) {
-    		return -1;
-    	}
-    	
-		len = mDeviceConnection.bulkTransfer(mFTDIEndpointIN, rbuf, buf.length, 0); // RX
-		
-		// FIXME shift rbuf's pointer 2 to 0. (I don't know how to do.) 
-		for(i=0;i<len-2;++i) {
-			buf[i] = rbuf[i+2];
-		}
-		return (len-2);
+        if (buf.length <= mReadbufRemain) {
+//        	System.arraycopy(mReadbuf, mReadbufOffset, buf, 0, buf.length);
+        	for (int i=0; i<buf.length; i++ ) {
+        		buf[i] = mReadbuf[mReadbufOffset++];
+        	}
+            mReadbufRemain -= buf.length;
+        	return buf.length;
+        }
+        int ofst = 0;
+        int needlen = buf.length;
+        if (mReadbufRemain>0) {
+            needlen -= mReadbufRemain;
+            System.arraycopy(mReadbuf, mReadbufOffset, buf, ofst, mReadbufRemain);
+//            for (; mReadbufRemain>0 ; mReadbufRemain-- ) {
+//            	buf[ofst++] = mReadbuf[mReadbufOffset++];
+//            }
+        }
+        int len = mDeviceConnection.bulkTransfer(mFTDIEndpointIN, mReadbuf, mReadbuf.length,
+                0); // RX
+        int blocks = len / mPacketSize;
+        int remain = len % mPacketSize;
+        if (remain>0) {
+            blocks++;
+        }
+        mReadbufRemain = len - (2*blocks);
+        int rbufindex = 0;
+        for (int block=0; block<blocks; block++) {
+            int blockofst = block*mPacketSize;
+//            System.arraycopy(mReadbuf, blockofst+2, mReadbuf, rbufindex+1, mPacketSize-2);
+            for (int i=2; i<mPacketSize ; i++ ) {
+            	mReadbuf[rbufindex++] = mReadbuf[blockofst+i];
+            }
+        }
+        
+        mReadbufOffset = 0;
+        
+        for (;(mReadbufRemain>0) && (needlen>0);mReadbufRemain--,needlen--) {
+            buf[ofst++] = mReadbuf[mReadbufOffset++];            
+        }
+        return ofst;
     }
 
     // Write 1byte Binary Data
@@ -278,6 +316,7 @@ public class FTDriver {
                 Log.d(TAG,"open failed");
             }
         }
+        
         return false;
     }
     
