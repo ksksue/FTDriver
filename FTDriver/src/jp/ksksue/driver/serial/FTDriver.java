@@ -16,6 +16,7 @@ package jp.ksksue.driver.serial;
  * TX Data Size up to 64byte
  */
 
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
@@ -83,7 +84,12 @@ public class FTDriver {
     public boolean begin(int baudrate) {
     	for (UsbDevice device :  mManager.getDeviceList().values()) {
     		Log.i(TAG,"Devices : "+device.toString());
-        	  
+    		
+    		getPermission(device);
+    		if(!mManager.hasPermission(device)) {
+    			return false;
+    		}
+    		
     		// TODO: support any connections(current version find a first device)
     		if(getUsbInterfaces(device)) {
     			break;
@@ -109,8 +115,10 @@ public class FTDriver {
 
     // Close the device
     public void end() {
-    	for(int i=0; i<mSelectedDeviceInfo.mPortNum; ++i) {
-    		setUSBInterface(null,null,i);
+    	if(mSelectedDeviceInfo!=null) {
+    		for(int i=0; i<mSelectedDeviceInfo.mPortNum; ++i) {
+    			setUSBInterface(null,null,i);
+    		}
     	}
     }
 
@@ -409,6 +417,31 @@ public class FTDriver {
     	return rowDesc[13] << 8 + rowDesc[12];
     }
 */    
+    private PendingIntent mPermissionIntent;
+    
+    /**
+     * Sets PendingIntent for requestPermission
+     * 
+     * @param pi
+     * @see getPermission
+     */
+    public void setPermissionIntent(PendingIntent pi) {
+    	mPermissionIntent = pi;
+    }
+    
+    /**
+     * Gets an USB permission if no permission
+     * 
+     * @param device
+     * @see setPermissionIntent
+     */
+    public void getPermission(UsbDevice device) {
+    	if(device !=null && mPermissionIntent!=null) {
+    		if(!mManager.hasPermission(device)) {
+    			mManager.requestPermission(device, mPermissionIntent);
+    		}
+    	}
+    }
     
     // when insert the device USB plug into a USB port
 	public boolean usbAttached(Intent intent) {
