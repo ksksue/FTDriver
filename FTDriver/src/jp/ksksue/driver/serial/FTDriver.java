@@ -74,6 +74,8 @@ public class FTDriver {
     private int mReadbufRemain;
     private byte[] mReadbuf = new byte[READBUF_SIZE];
     
+    public static final int WRITEBUF_SIZE = 4096;
+
     public FTDriver(UsbManager manager) {
         mManager = manager;
         mReadbufOffset = 0;
@@ -174,25 +176,60 @@ public class FTDriver {
         return ofst;
     }
     
-    // Write 1byte Binary Data
+    /** Writes 1byte Binary Data
+     * 
+     * @param buf : write buffer
+     * @return written length
+     */
     public int write(byte[] buf) {
     	return write(buf,buf.length,0);
     }
     	
-    // Write n byte Binary Data
+    /** Writes n byte Binary Data
+     * 
+     * @param buf : write buffer
+     * @param length : write length
+     * @return wrriten length
+     */
     public int write(byte[] buf,int length) {
-    	if(length > 64) {
-    		return -1;
-    	}
     	return write(buf,length,0);
     }
 
-    // Write n byte Binary Data to n channel
+    /** Writes n byte Binary Data to n channel
+     * 
+     * @param buf : write buffer
+     * @param length : write length
+     * @param channel : write channel
+     * @return written length
+     */
     public int write(byte[] buf, int length, int channel) {
     	if(channel >= mSelectedDeviceInfo.mNumOfChannels) {
     		return -1;
     	}
-		return mDeviceConnection.bulkTransfer(mFTDIEndpointOUT[channel], buf, length, 0); // TX    	
+    	int offset = 0;
+    	int actual_length;
+		byte[] write_buf = new byte[WRITEBUF_SIZE];
+//    	byte[] tmp_buf=new byte[WRITEBUF_SIZE];
+    	
+    	while(offset < length) {
+    		int write_size = WRITEBUF_SIZE;
+    		
+    		if(offset+write_size > length) {
+    			write_size = length-offset;
+    		}
+    		System.arraycopy(buf, offset, write_buf, 0, write_size);
+//    		ByteArrayInputStream write_buf = new ByteArrayInputStream(buf);
+//    		write_buf.read(tmp_buf, offset, write_size);
+    		
+    		actual_length = mDeviceConnection.bulkTransfer(mFTDIEndpointOUT[channel], write_buf, write_size, 0);
+
+    		if(actual_length<0) {
+    			return -1;
+    		}
+    		offset += actual_length;
+    	}
+    	
+		return offset;
     }
 
     // TODO Implement these methods
