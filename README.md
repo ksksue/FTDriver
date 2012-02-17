@@ -8,7 +8,7 @@ USB Serial Driver using Android USB Host API
 - baudrate : 9600 - 230400 (be able to setting immediate baudrate number)
 - support FTDI chips (FT232RL, FT232H, FT2232C/D/H checked)
 - support any channels (FT2232X:2ch, FT4232X:4ch)
-- like Arduino library's method
+- like Arduino library's interface
 
 Connection
 
@@ -54,20 +54,24 @@ and be able to setting immediate baud rate (no check).
 
 
 read n bytes
+
     byte[] rbuf = new byte[n];
     len = mSerial.read(rbuf);
 
 read n bytes from channel p
+
     byte[] rbuf = new byte[n];
     len = mSerial.read(rbuf, n, p)
 
 
 write n bytes
+
     byte[] wbuf = new byte[n];
     ...(set wbuf)
     len = mSerial.write(wbuf,n);
 
 write n bytes to channel p
+
     byte[] wbuf = new byte[n];
     ...(set wbuf)
     len = mSerial.write(wbuf,n,p);
