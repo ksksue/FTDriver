@@ -3,32 +3,33 @@ Android USB Serial Driver
 
 USB Serial Driver using Android USB Host API  
 
-- java source code
-- no Android root
-- baudrate : 9600 - 230400
-- some FTDI chip (FT232RL, FT2232C, FT232H checked)
-- driver methods like Arduino library's
+- Java source code
+- **no root**
+- baudrate : 9600 - 230400 (be able to setting immediate baudrate number)
+- support FTDI chips (FT232RL, FT232H, FT2232C/D/H checked)
+- support any channels (FT2232X:2ch, FT4232X:4ch)
+- like Arduino library's interface
 
 Connection
 
     Android [USB A port] --- [USB B port] FTDI Chip
 - requirement
- - Android : version 3.1 or upper and have USB host port
+ - Android : version 3.1 or upper and have an USB host port
  - Board : FTDI Chip
 
 Projects
 -----
 - Library Project  
- **FTDriver** : Driver for connecting an FTDI USB port to Android USB host port
+ **FTDriver** : Driver for connecting an FTDI chip to Android USB host port
 
 - Sample Projects  
- **FTSampleTerminal** : very very simple terminal  
- **FTSerialCSV** : serial communication with Genet educational board ([www.genet-nara.jp](www.genet-nara.jp "genet")) in CSV format (Thanks for Heima Hayashida)  
+ **FTSampleTerminal** : very simple terminal  
+ **FTSerialCSV** : serial communication with a Genet educational board ([www.genet-nara.jp](www.genet-nara.jp "genet")) in CSV format (Thanks for Heima Hayashida)  
 ![genet](https://lh3.googleusercontent.com/-nj_EGL5D-nY/Tsu-OodpQJI/AAAAAAAABaY/zh6p2mhpg24/s400/DSC_0444.JPG "genet")  
-Fig. Connecting an Android tablet to a Genet board(FT232RL) by one USB cable.(ET2011 Forum in Japan)  
+Fig. Connecting an Android tablet to a Genet board(FT232RL) by a USB cable.(ET2011 Forum in Japan)  
 
 
-Usage
+Interfaces
 ----------------
 
 
@@ -49,21 +50,31 @@ BAUD38400
 BAUD57600  
 BAUD115200  
 BAUD230400  
-and you can set immediate baud rate (no check).
+and be able to setting immediate baud rate (no check).
 
 
-n byte read (n = 1~60)
+read n bytes
 
     byte[] rbuf = new byte[n];
     len = mSerial.read(rbuf);
 
+read n bytes from channel p
 
-n byte write (n = 1~64)
+    byte[] rbuf = new byte[n];
+    len = mSerial.read(rbuf, n, p)
+
+
+write n bytes
 
     byte[] wbuf = new byte[n];
     ...(set wbuf)
     len = mSerial.write(wbuf,n);
 
+write n bytes to channel p
+
+    byte[] wbuf = new byte[n];
+    ...(set wbuf)
+    len = mSerial.write(wbuf,n,p);
 
 close
 
