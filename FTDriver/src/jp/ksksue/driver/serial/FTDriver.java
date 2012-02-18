@@ -31,9 +31,9 @@ class UsbId {
 	int mVid;
 	int mPid;
 	int mBcdDevice;
-	int mPortNum;
+	int mNumOfChannels;
 	FTDICHIPTYPE mType;
-	UsbId(int vid, int pid, int bcdDevice, int portNum, FTDICHIPTYPE type){ mVid = vid; mPid = pid; mBcdDevice = bcdDevice; mPortNum = portNum; mType = type;}
+	UsbId(int vid, int pid, int bcdDevice, int numOfChannels, FTDICHIPTYPE type){ mVid = vid; mPid = pid; mBcdDevice = bcdDevice; mNumOfChannels = numOfChannels; mType = type;}
 }
 
 public class FTDriver {
@@ -118,10 +118,10 @@ public class FTDriver {
     		return false;
     	}
     	
-		mFTDIEndpointIN = new UsbEndpoint[mSelectedDeviceInfo.mPortNum];
-		mFTDIEndpointOUT = new UsbEndpoint[mSelectedDeviceInfo.mPortNum];
+		mFTDIEndpointIN = new UsbEndpoint[mSelectedDeviceInfo.mNumOfChannels];
+		mFTDIEndpointOUT = new UsbEndpoint[mSelectedDeviceInfo.mNumOfChannels];
 		
-        if(!setFTDIEndpoints(mInterface,mSelectedDeviceInfo.mPortNum)){
+        if(!setFTDIEndpoints(mInterface,mSelectedDeviceInfo.mNumOfChannels)){
         	return false;
         }
         initFTDIChip(mDeviceConnection,baudrate);
@@ -134,7 +134,7 @@ public class FTDriver {
     // Close the device
     public void end() {
     	if(mSelectedDeviceInfo!=null) {
-    		for(int i=0; i<mSelectedDeviceInfo.mPortNum; ++i) {
+    		for(int i=0; i<mSelectedDeviceInfo.mNumOfChannels; ++i) {
     			setUSBInterface(null,null,i);
     		}
     	}
@@ -147,7 +147,7 @@ public class FTDriver {
     
     // TODO: BUG : sometimes miss data transfer
     public int read(byte[] buf, int channel) {
-    	if(channel >= mSelectedDeviceInfo.mPortNum) {
+    	if(channel >= mSelectedDeviceInfo.mNumOfChannels) {
     		return -1;
     	}
     	if (buf.length <= mReadbufRemain) {
@@ -219,7 +219,7 @@ public class FTDriver {
      * @return written length
      */
     public int write(byte[] buf, int length, int channel) {
-    	if(channel >= mSelectedDeviceInfo.mPortNum) {
+    	if(channel >= mSelectedDeviceInfo.mNumOfChannels) {
     		return -1;
     	}
     	int offset = 0;
@@ -333,7 +333,7 @@ public class FTDriver {
     // Initial control transfer
 	private void initFTDIChip(UsbDeviceConnection conn,int baudrate) {
 		
-		for(int i=0;i < mSelectedDeviceInfo.mPortNum; ++i) {
+		for(int i=0;i < mSelectedDeviceInfo.mNumOfChannels; ++i) {
 			int index = i+1;
 			conn.controlTransfer(0x40, 0, 0, index, null, 0, 0);				//reset
 			conn.controlTransfer(0x40, 0, 1, index, null, 0, 0);				//clear Rx
@@ -473,7 +473,7 @@ public class FTDriver {
 		for(UsbId usbids : IDS){
 			intf = findUSBInterfaceByVIDPID(device, usbids.mVid, usbids.mPid);
 			if (intf[0] != null) {
-				for(int i=0; i<usbids.mPortNum; ++i) {
+				for(int i=0; i<usbids.mNumOfChannels; ++i) {
 					Log.d(TAG, "Found USB interface " + intf[i]);
 					setUSBInterface(device, intf[i], i);
 					mSelectedDeviceInfo = usbids;
@@ -530,6 +530,19 @@ public class FTDriver {
     		if(!mManager.hasPermission(device)) {
     			mManager.requestPermission(device, mPermissionIntent);
     		}
+    	}
+    }
+    
+    /**
+     * Gets number of channels
+     * 
+     * @return Number of channels
+     */
+    public int getNumberOfChannels() {
+    	if(mSelectedDeviceInfo!=null) {
+    		return mSelectedDeviceInfo.mNumOfChannels;
+    	} else {
+    		return 0;
     	}
     }
     
