@@ -23,6 +23,7 @@ import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbEndpoint;
 import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
+import android.hardware.usb.UsbConstants;
 import android.util.Log;
 
 enum FTDICHIPTYPE {FT232RL, FT2232C, FT232H, FT2232D, FT2232HL, FT4232HL ; }
@@ -30,9 +31,9 @@ class UsbId {
 	int mVid;
 	int mPid;
 	int mBcdDevice;
-	int mNumOfChannels;
+	int mPortNum;
 	FTDICHIPTYPE mType;
-	UsbId(int vid, int pid, int bcdDevice, int numOfChannels, FTDICHIPTYPE type){ mVid = vid; mPid = pid; mBcdDevice = bcdDevice; mNumOfChannels = numOfChannels; mType = type;}
+	UsbId(int vid, int pid, int bcdDevice, int portNum, FTDICHIPTYPE type){ mVid = vid; mPid = pid; mBcdDevice = bcdDevice; mPortNum = portNum; mType = type;}
 }
 
 public class FTDriver {
@@ -56,6 +57,20 @@ public class FTDriver {
     public static final int BAUD115200	= 115200;
     public static final int BAUD230400	= 230400;
     
+    public static final int FTDI_MPSSE_BITMODE_RESET  = 0x00;    /**< switch off bitbang mode, back to regular serial/FIFO */
+    public static final int FTDI_MPSSE_BITMODE_BITBANG= 0x01;    /**< classical asynchronous bitbang mode, introduced with B-type chips */
+    public static final int FTDI_MPSSE_BITMODE_MPSSE  = 0x02;    /**< MPSSE mode, available on 2232x chips */
+    public static final int FTDI_MPSSE_BITMODE_SYNCBB = 0x04;    /**< synchronous bitbang mode, available on 2232x and R-type chips  */
+    public static final int FTDI_MPSSE_BITMODE_MCU    = 0x08;    /**< MCU Host Bus Emulation mode, available on 2232x chips */
+    public static final int FTDI_MPSSE_BITMODE_OPTO   = 0x10;    /**< Fast Opto-Isolated Serial Interface Mode, available on 2232x chips  */
+    public static final int FTDI_MPSSE_BITMODE_CBUS   = 0x20;    /**< Bitbang on CBUS pins of R-type chips, configure in EEPROM before */
+    public static final int FTDI_MPSSE_BITMODE_SYNCFF = 0x40;    /**< Single Channel Synchronous FIFO mode, available on 2232H chips */
+    public static final int FTDI_MPSSE_BITMODE_FT1284 = 0x80;    /**< FT1284 mode, available on 232H chips */
+	
+    final static int FTDI_SIO_SET_BITMODE_REQUEST = 0x0B;
+    final static int FTDI_SIO_READ_PINS_REQUEST = 0x0C;
+
+    
     public static final int FTDI_MAX_INTERFACE_NUM = 4;
     
     private static final String TAG = "FTDriver";
@@ -73,6 +88,7 @@ public class FTDriver {
     private int mReadbufOffset;
     private int mReadbufRemain;
     private byte[] mReadbuf = new byte[READBUF_SIZE];
+    //private int mBitbangMode = FTDI_MPSSE_BITMODE_RESET;
     
     public FTDriver(UsbManager manager) {
         mManager = manager;
@@ -100,10 +116,10 @@ public class FTDriver {
     		return false;
     	}
     	
-		mFTDIEndpointIN = new UsbEndpoint[mSelectedDeviceInfo.mNumOfChannels];
-		mFTDIEndpointOUT = new UsbEndpoint[mSelectedDeviceInfo.mNumOfChannels];
+		mFTDIEndpointIN = new UsbEndpoint[mSelectedDeviceInfo.mPortNum];
+		mFTDIEndpointOUT = new UsbEndpoint[mSelectedDeviceInfo.mPortNum];
 		
-        if(!setFTDIEndpoints(mInterface,mSelectedDeviceInfo.mNumOfChannels)){
+        if(!setFTDIEndpoints(mInterface,mSelectedDeviceInfo.mPortNum)){
         	return false;
         }
         initFTDIChip(mDeviceConnection,baudrate);
@@ -116,7 +132,7 @@ public class FTDriver {
     // Close the device
     public void end() {
     	if(mSelectedDeviceInfo!=null) {
-    		for(int i=0; i<mSelectedDeviceInfo.mNumOfChannels; ++i) {
+    		for(int i=0; i<mSelectedDeviceInfo.mPortNum; ++i) {
     			setUSBInterface(null,null,i);
     		}
     	}
@@ -129,7 +145,7 @@ public class FTDriver {
     
     // TODO: BUG : sometimes miss data transfer
     public int read(byte[] buf, int channel) {
-    	if(channel >= mSelectedDeviceInfo.mNumOfChannels) {
+    	if(channel >= mSelectedDeviceInfo.mPortNum) {
     		return -1;
     	}
     	if (buf.length <= mReadbufRemain) {
@@ -189,7 +205,7 @@ public class FTDriver {
 
     // Write n byte Binary Data to n channel
     public int write(byte[] buf, int length, int channel) {
-    	if(channel >= mSelectedDeviceInfo.mNumOfChannels) {
+    	if(channel >= mSelectedDeviceInfo.mPortNum) {
     		return -1;
     	}
 		return mDeviceConnection.bulkTransfer(mFTDIEndpointOUT[channel], buf, length, 0); // TX    	
@@ -217,6 +233,43 @@ public class FTDriver {
     }
     */
 
+    public byte getPinState()
+    {
+		int index = 0;
+		byte [] buffer;
+		buffer = new byte [1];
+		
+		mDeviceConnection.controlTransfer(
+				UsbConstants.USB_TYPE_VENDOR | UsbConstants.USB_DIR_IN,
+				FTDI_SIO_READ_PINS_REQUEST, 0, index, buffer, 1, 0);
+
+		return buffer[0];
+    }
+    
+    public boolean setBitmode(boolean enable,int bitmask,int mode)
+    {
+    	short val = 0;
+    	int result;
+    	boolean ret = false;
+		int index = 0; // for devices that have multiple IFs,need to modify.
+    
+		if(enable){
+	    	val = (short)bitmask;
+	    	val |= (mode << 8);
+		}
+
+		result = mDeviceConnection.controlTransfer(
+				UsbConstants.USB_TYPE_VENDOR | UsbConstants.USB_DIR_OUT,
+				FTDI_SIO_SET_BITMODE_REQUEST,val,index,null,0,0);
+		
+		if(result >= 0){
+			ret = true;
+			//mBitbangMode = mode;
+		}
+
+		return ret;
+    }
+        
     public boolean setBaudrate(int baudrate, int channel) {
 		int baud = calcFTDIBaudrate(baudrate, mSelectedDeviceInfo.mType);
 		int index = 0;
@@ -243,7 +296,7 @@ public class FTDriver {
     // Initial control transfer
 	private void initFTDIChip(UsbDeviceConnection conn,int baudrate) {
 		
-		for(int i=0;i < mSelectedDeviceInfo.mNumOfChannels; ++i) {
+		for(int i=0;i < mSelectedDeviceInfo.mPortNum; ++i) {
 			int index = i+1;
 			conn.controlTransfer(0x40, 0, 0, index, null, 0, 0);				//reset
 			conn.controlTransfer(0x40, 0, 1, index, null, 0, 0);				//clear Rx
@@ -254,7 +307,7 @@ public class FTDriver {
 		}
 	}
 	
-	/** Calculate a Divisor at 48MHz
+	/* Calculate a Divisor at 48MHz
 	 * 9600	: 0x4138
 	 * 11400	: 0xc107
 	 * 19200	: 0x809c
@@ -383,7 +436,7 @@ public class FTDriver {
 		for(UsbId usbids : IDS){
 			intf = findUSBInterfaceByVIDPID(device, usbids.mVid, usbids.mPid);
 			if (intf[0] != null) {
-				for(int i=0; i<usbids.mNumOfChannels; ++i) {
+				for(int i=0; i<usbids.mPortNum; ++i) {
 					Log.d(TAG, "Found USB interface " + intf[i]);
 					setUSBInterface(device, intf[i], i);
 					mSelectedDeviceInfo = usbids;
@@ -440,19 +493,6 @@ public class FTDriver {
     		if(!mManager.hasPermission(device)) {
     			mManager.requestPermission(device, mPermissionIntent);
     		}
-    	}
-    }
-    
-    /**
-     * Gets number of channels
-     * 
-     * @return Number of channels
-     */
-    public int getNumberOfChannels() {
-    	if(mSelectedDeviceInfo!=null) {
-    		return mSelectedDeviceInfo.mNumOfChannels;
-    	} else {
-    		return 0;
     	}
     }
     
