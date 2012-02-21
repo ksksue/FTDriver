@@ -48,7 +48,17 @@ public class FTDriver {
 		new UsbId(0x0403, 0x6011, 8, 4, FTDICHIPTYPE.FT4232HL),	// FT4232HL
 	};
     private UsbId mSelectedDeviceInfo;
-	
+    
+    public static final int CH_A	= 1;
+    public static final int CH_B	= 2;
+    public static final int CH_C	= 3;
+    public static final int CH_D	= 4;
+    
+    public static final int BAUD300	= 300;
+    public static final int BAUD600	= 600;
+    public static final int BAUD1200	= 1200;
+    public static final int BAUD2400	= 2400;
+    public static final int BAUD4800	= 4800;
     public static final int BAUD9600	= 9600;
     public static final int BAUD14400	= 14400;
     public static final int BAUD19200	= 19200;
@@ -56,7 +66,20 @@ public class FTDriver {
     public static final int BAUD57600	= 57600;
     public static final int BAUD115200	= 115200;
     public static final int BAUD230400	= 230400;
-    
+
+	public static final int FTDI_SET_DATA_PARITY_NONE	= (0x0 << 8);
+	public static final int FTDI_SET_DATA_PARITY_ODD		= (0x1 << 8);
+	public static final int FTDI_SET_DATA_PARITY_EVEN	= (0x2 << 8);
+	public static final int FTDI_SET_DATA_PARITY_MARK	= (0x3 << 8);
+	public static final int FTDI_SET_DATA_PARITY_SPACE	= (0x4 << 8);
+	public static final int FTDI_SET_DATA_STOP_BITS_1	= (0x0 << 11);
+	public static final int FTDI_SET_DATA_STOP_BITS_15	= (0x1 << 11);
+	public static final int FTDI_SET_DATA_STOP_BITS_2	= (0x2 << 11);
+	public static final int FTDI_SET_NOBREAK				= (0x0 << 14);
+	public static final int FTDI_SET_BREAK					= (0x1 << 14);
+	
+	private int[] mSerialProperty = new int[4];
+	
     public static final int FTDI_MPSSE_BITMODE_RESET  = 0x00;    /**< switch off bitbang mode, back to regular serial/FIFO */
     public static final int FTDI_MPSSE_BITMODE_BITBANG= 0x01;    /**< classical asynchronous bitbang mode, introduced with B-type chips */
     public static final int FTDI_MPSSE_BITMODE_MPSSE  = 0x02;    /**< MPSSE mode, available on 2232x chips */
@@ -96,6 +119,10 @@ public class FTDriver {
         mManager = manager;
         mReadbufOffset = 0;
         mReadbufRemain = 0;
+        for(int i=0;i<4;++i) {
+        	// Default Serial Property : Data bit : 8, Parity : none, Stop bit : 1, Tx : off
+        	mSerialProperty[i] = FTDI_SET_DATA_PARITY_NONE | FTDI_SET_DATA_STOP_BITS_1 | 8; 
+        }
     }
     
     // Open an FTDI USB Device
@@ -323,7 +350,7 @@ public class FTDriver {
 			index = baud >> 16;
 		}
 		
-		index |= channel+1;	// Ch.A=1, Ch.B=2, ...
+		index |= channel;	// Ch.A=1, Ch.B=2, ...
 		
 		mDeviceConnection.controlTransfer(0x40, 0x03, baud, index, null, 0, 0);		//set baudrate
 		
@@ -339,10 +366,129 @@ public class FTDriver {
 			conn.controlTransfer(0x40, 0, 1, index, null, 0, 0);				//clear Rx
 			conn.controlTransfer(0x40, 0, 2, index, null, 0, 0);				//clear Tx
 			conn.controlTransfer(0x40, 0x02, 0x0000, index, null, 0, 0);	//flow control none
-			setBaudrate(baudrate, i);
+			setBaudrate(baudrate, index);
 			conn.controlTransfer(0x40, 0x04, 0x0008, index, null, 0, 0);	//data bit 8, parity none, stop bit 1, tx off
 		}
 	}
+
+	/**
+	 * Sets the serial properties to an FTDI chip
+	 * 
+	 * @param conn : USB device connection
+	 * @param channel
+	 * 		CH_A
+	 * 		CH_B
+	 * 		CH_C
+	 * 		CH_D
+	 */
+	public void setSerialPropertyToChip(UsbDeviceConnection conn, int channel) {
+		// TODO : test this method
+		conn.controlTransfer(0x40, 0x04, mSerialProperty[channel-1], channel, null, 0, 0);
+	}
+
+	/**
+	 * Sets the serial property of data bit
+	 * 
+	 * @param numOfDataBit : number of data bit(8 or 7)
+	 * @param channel
+	 * 		CH_A
+	 * 		CH_B
+	 * 		CH_C
+	 * 		CH_D
+	 * @return true : succeed, false : not succeed
+	 */
+	public boolean setSerialPropertyDataBit(int numOfDataBit, int channel) {
+		// TODO : test this method
+		if((0 < numOfDataBit) || (numOfDataBit <= 8)) {
+			mSerialProperty[channel-1] = (mSerialProperty[channel-1] & 0xFFF0) | (numOfDataBit & 0x000F);
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	/**
+	 * Sets the serial property of parity bit
+	 * 
+	 * @param parity
+	 * 		none  : FTDI_SET_DATA_PARITY_NONE
+	 * 		odd   : FTDI_SET_DATA_PARITY_ODD
+	 * 		even  : FTDI_SET_DATA_PARITY_EVEN
+	 * 		mark  : FTDI_SET_DATA_PARITY_MARK
+	 * 		space : FTDI_SET_DATA_PARITY_SPACE
+	 * @param channel
+	 * 		CH_A
+	 * 		CH_B
+	 * 		CH_C
+	 * 		CH_D
+	 * @return true : succeed, false : not succeed
+	 */
+	public boolean setSerialPropertyParity(int parity, int channel) {
+		// TODO : test this method
+		if(		parity == FTDI_SET_DATA_PARITY_NONE	||
+				parity == FTDI_SET_DATA_PARITY_ODD		||
+				parity == FTDI_SET_DATA_PARITY_EVEN	||
+				parity == FTDI_SET_DATA_PARITY_MARK	||
+				parity == FTDI_SET_DATA_PARITY_SPACE
+				) {
+			mSerialProperty[channel-1] = (mSerialProperty[channel-1] & 0xFF8F) | (parity & 0x0070);
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	/**
+	 * Sets the serial property of stop bits
+	 * 
+	 * @param stopBits
+	 * 		1   : FTDI_SET_DATA_STOP_BITS_1
+	 * 		1.5 : FTDI_SET_DATA_STOP_BITS_15
+	 * 		2   : FTDI_SET_DATA_STOP_BITS_2
+	 * @param channel
+	 * 		CH_A
+	 * 		CH_B
+	 * 		CH_C
+	 * 		CH_D
+	 * @return true : succeed, false : not succeed
+	 */
+	public boolean setSerialPropertyStopBits(int stopBits, int channel) {
+		// TODO : test this method
+		if(		stopBits == FTDI_SET_DATA_STOP_BITS_1	||
+				stopBits == FTDI_SET_DATA_STOP_BITS_15	||
+				stopBits == FTDI_SET_DATA_STOP_BITS_2
+				)  {
+			mSerialProperty[channel-1] = (mSerialProperty[channel-1] & 0xFC7F) | (stopBits & 0x0380);
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	/**
+	 * Sets the serial property of TX ON/OFF
+	 * 
+	 * @param tx
+	 * 		TX OFF : FTDI_SET_NOBREAK
+	 * 		TX ON  : FTDI_SET_BREAK
+	 * @param channel
+	 * 		CH_A
+	 * 		CH_B
+	 * 		CH_C
+	 * 		CH_D
+	 * @return true : succeed, false : not succeed
+	 */
+	public boolean setSerialPropertyBreak(int tx, int channel) {
+		// TODO : test this method
+		if(		tx == FTDI_SET_NOBREAK ||
+				tx == FTDI_SET_BREAK
+				) {
+			mSerialProperty[channel-1] = (mSerialProperty[channel-1] & 0xFBFF) | (tx & 0x0400);
+			return true;
+		} else {
+			return false;
+		}
+	}	
 	
 	/* Calculate a Divisor at 48MHz
 	 * 9600	: 0x4138
