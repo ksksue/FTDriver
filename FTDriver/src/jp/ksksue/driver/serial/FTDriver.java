@@ -77,7 +77,12 @@ public class FTDriver {
 	public static final int FTDI_SET_DATA_STOP_BITS_2	= (0x2 << 11);
 	public static final int FTDI_SET_NOBREAK				= (0x0 << 14);
 	public static final int FTDI_SET_BREAK					= (0x1 << 14);
-	
+	public static final int FTDI_SET_FLOW_CTRL_NONE		= 0x0;
+	public static final int FTDI_SET_FLOW_RTS_CTS_HS		= (0x1 << 8);
+	public static final int FTDI_SET_FLOW_DTR_DSR_HS		= (0x2 << 8);
+	public static final int FTDI_SET_FLOW_XON_XOFF_HS	= (0x4 << 8);
+
+
 	private int[] mSerialProperty = new int[4];
 	
     public static final int FTDI_MPSSE_BITMODE_RESET  = 0x00;    /**< switch off bitbang mode, back to regular serial/FIFO */
@@ -370,9 +375,41 @@ public class FTDriver {
 			conn.controlTransfer(0x40, 0x04, 0x0008, index, null, 0, 0);	//data bit 8, parity none, stop bit 1, tx off
 		}
 	}
-
+	
 	/**
-	 * Sets the serial properties to an FTDI chip
+	 * Sets flow control to an FTDI chip register
+	 * 
+	 * @param conn : USB Device Connection
+	 * @param channel
+	 * 		CH_A
+	 * 		CH_B
+	 * 		CH_C
+	 * 		CH_D
+	 * @param flowControl
+	 * 		FTDI_SET_FLOW_CTRL_NONE
+	 * 		FTDI_SET_FLOW_RTS_CTS_HS
+	 * 		FTDI_SET_FLOW_DTR_DSR_HS
+	 * 		FTDI_SET_FLOW_XON_XOFF_HS
+	 * @return true : succeed, false : not succeed
+	 */
+	public boolean setFlowControl(UsbDeviceConnection conn, int channel, int flowControl) {
+		if(		flowControl == FTDI_SET_FLOW_CTRL_NONE		||
+				flowControl == FTDI_SET_FLOW_RTS_CTS_HS	||
+				flowControl == FTDI_SET_FLOW_DTR_DSR_HS 	||
+				flowControl == FTDI_SET_FLOW_XON_XOFF_HS
+				) {
+			if(conn.controlTransfer(0x40, 0x02, 0x0000, channel, null, 0, 0)<0) {
+				return false;
+			} else {
+				return true;
+			}
+		} else {
+			return false;
+		}
+	}
+	
+	/**
+	 * Sets the serial properties to an FTDI chip register
 	 * 
 	 * @param conn : USB device connection
 	 * @param channel
@@ -380,10 +417,15 @@ public class FTDriver {
 	 * 		CH_B
 	 * 		CH_C
 	 * 		CH_D
+	 * @return true : succeed, false : not succeed
 	 */
-	public void setSerialPropertyToChip(UsbDeviceConnection conn, int channel) {
+	public boolean setSerialPropertyToChip(UsbDeviceConnection conn, int channel) {
 		// TODO : test this method
-		conn.controlTransfer(0x40, 0x04, mSerialProperty[channel-1], channel, null, 0, 0);
+		if(conn.controlTransfer(0x40, 0x04, mSerialProperty[channel-1], channel, null, 0, 0)<0) {
+			return false;
+		} else {
+			return true;
+		}
 	}
 
 	/**
