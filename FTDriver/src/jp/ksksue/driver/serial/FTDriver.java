@@ -67,6 +67,8 @@ public class FTDriver {
     public static final int BAUD115200	= 115200;
     public static final int BAUD230400	= 230400;
 
+	public static final int FTDI_SET_DATA_BITS_7			= 7;
+	public static final int FTDI_SET_DATA_BITS_8			= 8;
 	public static final int FTDI_SET_DATA_PARITY_NONE	= (0x0 << 8);
 	public static final int FTDI_SET_DATA_PARITY_ODD		= (0x1 << 8);
 	public static final int FTDI_SET_DATA_PARITY_EVEN	= (0x2 << 8);
