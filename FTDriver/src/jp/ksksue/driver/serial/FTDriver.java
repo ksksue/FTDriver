@@ -381,7 +381,6 @@ public class FTDriver {
 	/**
 	 * Sets flow control to an FTDI chip register
 	 * 
-	 * @param conn : USB Device Connection
 	 * @param channel
 	 * 		CH_A
 	 * 		CH_B
@@ -394,13 +393,21 @@ public class FTDriver {
 	 * 		FTDI_SET_FLOW_XON_XOFF_HS
 	 * @return true : succeed, false : not succeed
 	 */
-	public boolean setFlowControl(UsbDeviceConnection conn, int channel, int flowControl) {
+	public boolean setFlowControl(int channel, int flowControl) {
+		if(mDeviceConnection == null) {
+			return false;
+		}
+		
+		if(CH_A > channel || channel > CH_D) {
+			return false;
+		}
+		
 		if(		flowControl == FTDI_SET_FLOW_CTRL_NONE		||
 				flowControl == FTDI_SET_FLOW_RTS_CTS_HS	||
 				flowControl == FTDI_SET_FLOW_DTR_DSR_HS 	||
 				flowControl == FTDI_SET_FLOW_XON_XOFF_HS
 				) {
-			if(conn.controlTransfer(0x40, 0x02, 0x0000, channel, null, 0, 0)<0) {
+			if(mDeviceConnection.controlTransfer(0x40, 0x02, 0x0000, channel, null, 0, 0)<0) {
 				return false;
 			} else {
 				return true;
@@ -413,7 +420,6 @@ public class FTDriver {
 	/**
 	 * Sets the serial properties to an FTDI chip register
 	 * 
-	 * @param conn : USB device connection
 	 * @param channel
 	 * 		CH_A
 	 * 		CH_B
@@ -421,9 +427,17 @@ public class FTDriver {
 	 * 		CH_D
 	 * @return true : succeed, false : not succeed
 	 */
-	public boolean setSerialPropertyToChip(UsbDeviceConnection conn, int channel) {
+	public boolean setSerialPropertyToChip(int channel) {
 		// TODO : test this method
-		if(conn.controlTransfer(0x40, 0x04, mSerialProperty[channel-1], channel, null, 0, 0)<0) {
+		if(mDeviceConnection == null) {
+			return false;
+		}
+		
+		if(CH_A > channel || channel > CH_D) {
+			return false;
+		}
+		
+		if(mDeviceConnection.controlTransfer(0x40, 0x04, mSerialProperty[channel-1], channel, null, 0, 0)<0) {
 			return false;
 		} else {
 			return true;
