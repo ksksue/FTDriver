@@ -38,6 +38,15 @@ class UsbId {
 
 public class FTDriver {
 	
+	/*
+	 * USB read packet loss checker
+	 * 
+	 * If true then checking USB read packet loss
+	 * and displaying messages to Logcat
+	 * 
+	 * requirement : microcomputer send 01234567890123456789012... to Android
+	 */
+	private boolean mReadPakcetChecker = false;
 	
 	private static final UsbId[] IDS = {
 		new UsbId(0x0403, 0x6001, 6, 1, FTDICHIPTYPE.FT232RL),	// FT232RL
@@ -122,6 +131,11 @@ public class FTDriver {
     
     public static final int WRITEBUF_SIZE = 4096;
 
+    /* for USB read packet loss checker */
+    private int incReadCount=0;
+    private int totalReadCount=0;
+    private boolean updateReadCount = false;
+
     public FTDriver(UsbManager manager) {
         mManager = manager;
         mReadbufOffset = 0;
@@ -181,15 +195,36 @@ public class FTDriver {
     
     // TODO: BUG : sometimes miss data transfer
     public int read(byte[] buf, int channel) {
+
     	if(channel >= mSelectedDeviceInfo.mNumOfChannels) {
     		return -1;
     	}
     	if (buf.length <= mReadbufRemain) {
-//        	System.arraycopy(mReadbuf, mReadbufOffset, buf, 0, buf.length);
-        	for (int i=0; i<buf.length; i++ ) {
-        		buf[i] = mReadbuf[mReadbufOffset++];
-        	}
-            mReadbufRemain -= buf.length;
+    		if(!mReadPakcetChecker) {
+    			System.arraycopy(mReadbuf, mReadbufOffset, buf, 0, buf.length);
+			} else {
+				/*
+				 * USB read packet loss checker
+				 * 
+				 * check: read byte is 01234567890123456789012...
+				 * requirement : microcomputer send 01234567890123456789012... to Android
+				 */
+				for (int i = 0; i < buf.length; i++) {
+					buf[i] = mReadbuf[mReadbufOffset++];
+					++incReadCount;
+					// check count number == read number
+					while ((incReadCount - 1) % 10 != (Byte.valueOf(buf[i]) - '0')) {
+						Log.d(TAG, "!!! Lost Data !!! count : "
+								+ (incReadCount - 1) + ", data : " + buf[i]);
+						++incReadCount;
+					}
+				}
+				Log.d(TAG, "read buf length 1 : " + Integer.toString(buf.length));
+				totalReadCount += buf.length;
+				updateReadCount = true;
+				/* end of USB read packet loss checker*/
+			}
+        	mReadbufRemain -= buf.length;
         	return buf.length;
         }
         int ofst = 0;
@@ -221,9 +256,43 @@ public class FTDriver {
         mReadbufOffset = 0;
         
         for (;(mReadbufRemain>0) && (needlen>0);mReadbufRemain--,needlen--) {
-            buf[ofst++] = mReadbuf[mReadbufOffset++];            
+            buf[ofst++] = mReadbuf[mReadbufOffset++];
+			if (mReadPakcetChecker) {
+				/*
+				 * USB read packet loss checker
+				 */
+				++incReadCount;
+				while ((incReadCount - 1) % 10 != (Byte.valueOf(buf[ofst - 1]) - '0')) {
+					Log.d(TAG,
+							"!!! Lost Data !!! count : " + (incReadCount - 1)
+									+ ", data : "
+									+ Byte.toString(buf[ofst - 1]));
+					++incReadCount;
+				}
+				/* End of packet loss checker */
+			}
         }
-        return ofst;
+        
+		/*
+		 * USB read packet loss checker
+		 * 
+		 * Display a total of read count
+		 */
+		if (mReadPakcetChecker) {
+			if (ofst > 0) {
+				Log.d(TAG, "read buf length 2 : " + Integer.toString(ofst));
+				totalReadCount += ofst;
+				updateReadCount = true;
+			}
+			if (updateReadCount) {
+				Log.d(TAG, "Total of Read Count : " + totalReadCount);
+				Log.d(TAG, "Increment Read Count : " + incReadCount);
+				updateReadCount = false;
+			}
+        }
+		/* End of packet loss checker */
+
+		return ofst;
     }
     
     /** Writes 1byte Binary Data
@@ -303,7 +372,14 @@ public class FTDriver {
     	
     }
     */
-
+    
+    public boolean isConnected() {
+    	if(mDevice != null && mFTDIEndpointIN != null && mFTDIEndpointOUT != null) {
+    		return true;
+    	} else {
+    		return false;
+    	}
+    }
     public byte getPinState()
     {
 		int index = 0;
@@ -377,7 +453,7 @@ public class FTDriver {
 			conn.controlTransfer(0x40, 0x04, 0x0008, index, null, 0, 0);	//data bit 8, parity none, stop bit 1, tx off
 		}
 	}
-	
+		
 	/**
 	 * Sets flow control to an FTDI chip register
 	 * 
@@ -765,5 +841,4 @@ public class FTDriver {
 			setUSBInterface(null, null, 0);
 		}
 	}
-
 }
