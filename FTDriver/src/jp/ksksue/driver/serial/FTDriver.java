@@ -193,7 +193,6 @@ public class FTDriver {
     	return read(buf,0);
     }
     
-    // TODO: BUG : sometimes miss data transfer
     public int read(byte[] buf, int channel) {
 
     	if(channel >= mSelectedDeviceInfo.mNumOfChannels) {
@@ -418,6 +417,9 @@ public class FTDriver {
     }
         
     public boolean setBaudrate(int baudrate, int channel) {
+    	if(mDeviceConnection == null) {
+    		return false;
+    	}
 		int baud = calcFTDIBaudrate(baudrate, mSelectedDeviceInfo.mType);
 		int index = 0;
 		
