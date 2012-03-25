@@ -26,7 +26,7 @@ import android.hardware.usb.UsbManager;
 import android.hardware.usb.UsbConstants;
 import android.util.Log;
 
-enum FTDICHIPTYPE {FT232RL, FT2232C, FT232H, FT2232D, FT2232HL, FT4232HL ; }
+enum FTDICHIPTYPE {FT232RL, FT2232C, FT232H, FT2232D, FT2232HL, FT4232HL, FT230X ; }
 class UsbId {
 	int mVid;
 	int mPid;
@@ -55,6 +55,7 @@ public class FTDriver {
 		new UsbId(0x0403, 0x6010, 5, 2, FTDICHIPTYPE.FT2232D),	// FT2232D
 		new UsbId(0x0403, 0x6010, 7, 2, FTDICHIPTYPE.FT2232HL),	// FT2232HL
 		new UsbId(0x0403, 0x6011, 8, 4, FTDICHIPTYPE.FT4232HL),	// FT4232HL
+		new UsbId(0x0403, 0x6015, 10, 1, FTDICHIPTYPE.FT230X),	// FT230X
 	};
     private UsbId mSelectedDeviceInfo;
     
@@ -637,7 +638,7 @@ public class FTDriver {
 	 */
 	private int calcFTDIBaudrate(int baud, FTDICHIPTYPE chiptype) {
 		int divisor = 0;
-		if( chiptype == FTDICHIPTYPE.FT232RL || chiptype == FTDICHIPTYPE.FT2232C ){
+		if( chiptype == FTDICHIPTYPE.FT232RL || chiptype == FTDICHIPTYPE.FT2232C || chiptype == FTDICHIPTYPE.FT230X ){
 			if(baud <= 3000000) {
 				divisor = calcFT232bmBaudBaseToDiv(baud, 48000000);
 			} else {
