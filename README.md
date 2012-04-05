@@ -6,7 +6,7 @@ USB Serial Driver using Android USB Host API
 - Java source code
 - **no root**
 - baudrate : 9600 - 230400 (be able to setting immediate baudrate number)
-- support FTDI chips (FT232RL, FT232H, FT2232C/D/H checked)
+- support FTDI chips (FT232RL, FT232H, FT2232C/D/HL, FT4232HL FT230X, REX-USB60F(FT232BL) checked)
 - support any channels (FT2232X:2ch, FT4232X:4ch)
 - like Arduino library's interface
 

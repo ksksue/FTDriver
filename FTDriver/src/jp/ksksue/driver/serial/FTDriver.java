@@ -6,14 +6,7 @@ package jp.ksksue.driver.serial;
  * Licensed under the Apache License, Version 2.0
  * http://www.apache.org/licenses/LICENSE-2.0
  * 
- * thanks to @titoi2 @darkukll @yakagawa
- */
-
-/*
- * FT232RL, FT2232C, FT232H
- * Baudrate : any
- * RX Data Size up to 60byte
- * TX Data Size up to 64byte
+ * thanks to @titoi2 @darkukll @yakagawa @yishii @hyokota555
  */
 
 import android.app.PendingIntent;
@@ -56,6 +49,7 @@ public class FTDriver {
 		new UsbId(0x0403, 0x6010, 7, 2, FTDICHIPTYPE.FT2232HL),	// FT2232HL
 		new UsbId(0x0403, 0x6011, 8, 4, FTDICHIPTYPE.FT4232HL),	// FT4232HL
 		new UsbId(0x0403, 0x6015, 10, 1, FTDICHIPTYPE.FT230X),	// FT230X
+		new UsbId(0x0584, 0xB020, 4, 1, FTDICHIPTYPE.FT232RL),	// REX-USB60F thanks to @hyokota555
 	};
     private UsbId mSelectedDeviceInfo;
     
