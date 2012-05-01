@@ -683,7 +683,7 @@ public class FTDriver {
 		UsbEndpoint epIn;
 		UsbEndpoint epOut;
 				
-		if(intf == null) {
+		if(intf[0] == null) {
 			return false;
 		}
 		
@@ -691,7 +691,7 @@ public class FTDriver {
 			epIn = intf[i].getEndpoint(0);
 			epOut = intf[i].getEndpoint(1);
 			
-	    	if(epIn != null && epOut != null) {
+			if(epIn != null && epOut != null) {
 	    		mFTDIEndpointIN[i] = epIn;
 	    		mFTDIEndpointOUT[i] = epOut;
 	    	} else {
