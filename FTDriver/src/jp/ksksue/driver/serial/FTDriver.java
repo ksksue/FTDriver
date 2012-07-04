@@ -6,7 +6,7 @@ package jp.ksksue.driver.serial;
  * Licensed under the Apache License, Version 2.0
  * http://www.apache.org/licenses/LICENSE-2.0
  * 
- * thanks to @titoi2 @darkukll @yakagawa @yishii @hyokota555
+ * thanks to @titoi2 @darkukll @yakagawa @yishii @hyokota555 @juju_suu
  */
 
 import android.app.PendingIntent;
@@ -562,7 +562,7 @@ public class FTDriver {
 				parity == FTDI_SET_DATA_PARITY_MARK	||
 				parity == FTDI_SET_DATA_PARITY_SPACE
 				) {
-			mSerialProperty[channel-1] = (mSerialProperty[channel-1] & 0xFF8F) | (parity & 0x0070);
+			mSerialProperty[channel-1] = (mSerialProperty[channel-1] & 0xF8FF) | (parity & 0x0700);
 			return true;
 		} else {
 			return false;
@@ -589,7 +589,7 @@ public class FTDriver {
 				stopBits == FTDI_SET_DATA_STOP_BITS_15	||
 				stopBits == FTDI_SET_DATA_STOP_BITS_2
 				)  {
-			mSerialProperty[channel-1] = (mSerialProperty[channel-1] & 0xFC7F) | (stopBits & 0x0380);
+			mSerialProperty[channel-1] = (mSerialProperty[channel-1] & 0xFC7F) | (stopBits & 0x1800);
 			return true;
 		} else {
 			return false;
@@ -614,7 +614,7 @@ public class FTDriver {
 		if(		tx == FTDI_SET_NOBREAK ||
 				tx == FTDI_SET_BREAK
 				) {
-			mSerialProperty[channel-1] = (mSerialProperty[channel-1] & 0xFBFF) | (tx & 0x0400);
+			mSerialProperty[channel-1] = (mSerialProperty[channel-1] & 0xFBFF) | (tx & 0x4000);
 			return true;
 		} else {
 			return false;
