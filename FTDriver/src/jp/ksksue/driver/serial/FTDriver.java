@@ -589,7 +589,7 @@ public class FTDriver {
 				stopBits == FTDI_SET_DATA_STOP_BITS_15	||
 				stopBits == FTDI_SET_DATA_STOP_BITS_2
 				)  {
-			mSerialProperty[channel-1] = (mSerialProperty[channel-1] & 0xFC7F) | (stopBits & 0x1800);
+			mSerialProperty[channel-1] = (mSerialProperty[channel-1] & 0xE7FF) | (stopBits & 0x1800);
 			return true;
 		} else {
 			return false;
@@ -614,7 +614,7 @@ public class FTDriver {
 		if(		tx == FTDI_SET_NOBREAK ||
 				tx == FTDI_SET_BREAK
 				) {
-			mSerialProperty[channel-1] = (mSerialProperty[channel-1] & 0xFBFF) | (tx & 0x4000);
+			mSerialProperty[channel-1] = (mSerialProperty[channel-1] & 0xBFFF) | (tx & 0x4000);
 			return true;
 		} else {
 			return false;
