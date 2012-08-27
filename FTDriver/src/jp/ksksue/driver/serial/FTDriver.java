@@ -22,28 +22,28 @@ import android.util.Log;
 
 enum FTDICHIPTYPE {FT232RL, FT2232C, FT232H, FT2232D, FT2232HL, FT4232HL, FT230X, CDC ; }
 class UsbId {
-	int mVid;
-	int mPid;
-	int mBcdDevice;
-	int mNumOfChannels;
-	FTDICHIPTYPE mType;
-	UsbId(int vid, int pid, int bcdDevice, int numOfChannels, FTDICHIPTYPE type){ mVid = vid; mPid = pid; mBcdDevice = bcdDevice; mNumOfChannels = numOfChannels; mType = type;}
+    int mVid;
+    int mPid;
+    int mBcdDevice;
+    int mNumOfChannels;
+    FTDICHIPTYPE mType;
+    UsbId(int vid, int pid, int bcdDevice, int numOfChannels, FTDICHIPTYPE type){ mVid = vid; mPid = pid; mBcdDevice = bcdDevice; mNumOfChannels = numOfChannels; mType = type;}
 }
 
 public class FTDriver {
-	
+    
 	/*
 	 * USB read packet loss checker
 	 * 
 	 * If true then checking USB read packet loss
 	 * and displaying messages to Logcat
-	 * 
-	 * requirement : microcomputer send 01234567890123456789012... to Android
-	 */
-	private boolean mReadPakcetChecker = false;
-	
-	private static final UsbId[] IDS = {
-		new UsbId(0x0403, 0x6001, 6, 1, FTDICHIPTYPE.FT232RL),	// FT232RL
+     * 
+     * requirement : microcomputer send 01234567890123456789012... to Android
+     */
+    private boolean mReadPakcetChecker = false;
+    
+    private static final UsbId[] IDS = {
+    	new UsbId(0x0403, 0x6001, 6, 1, FTDICHIPTYPE.FT232RL),	// FT232RL
 		new UsbId(0x0403, 0x6014, 9, 1, FTDICHIPTYPE.FT232H),	// FT232H
 		new UsbId(0x0403, 0x6010, 5, 2, FTDICHIPTYPE.FT2232C),	// FT2232C
 		new UsbId(0x0403, 0x6010, 5, 2, FTDICHIPTYPE.FT2232D),	// FT2232D
@@ -51,7 +51,7 @@ public class FTDriver {
 		new UsbId(0x0403, 0x6011, 8, 4, FTDICHIPTYPE.FT4232HL),	// FT4232HL
 		new UsbId(0x0403, 0x6015, 10, 1, FTDICHIPTYPE.FT230X),	// FT230X
 		new UsbId(0x0584, 0xB020, 4, 1, FTDICHIPTYPE.FT232RL),	// REX-USB60F thanks to @hyokota555
-		new UsbId(0x0000, 0x0000, 0, 2, FTDICHIPTYPE.CDC),		// CDC
+		new UsbId(0x0000, 0x0000, 0, 1, FTDICHIPTYPE.CDC),		// CDC
 	};
     private UsbId mSelectedDeviceInfo;
     
@@ -178,12 +178,18 @@ public class FTDriver {
 		mFTDIEndpointIN = new UsbEndpoint[mSelectedDeviceInfo.mNumOfChannels];
 		mFTDIEndpointOUT = new UsbEndpoint[mSelectedDeviceInfo.mNumOfChannels];
 		
-        if(!setFTDIEndpoints(mInterface,mSelectedDeviceInfo.mNumOfChannels)){
-        	return false;
-        }
-        
+		if(isCDC) {
+			if(!getCdcEndpoint()) {
+				return false;
+			}
+		} else {
+			if(!setFTDIEndpoints(mInterface,mSelectedDeviceInfo.mNumOfChannels)){
+				return false;
+			}
+		}
+		
         if(isCDC) {
-        	initCdcAcm(mDeviceConnection);
+        	initCdcAcm(mDeviceConnection,baudrate);
         } else {
         	initFTDIChip(mDeviceConnection,baudrate);
         }
@@ -224,7 +230,6 @@ public class FTDriver {
     	return read(buf,0);
     }
     
-    @SuppressLint("ParserError")
 	public int read(byte[] buf, int channel) {
     	
     	if(isCDC) {
@@ -394,28 +399,6 @@ public class FTDriver {
     	
 		return offset;
     }
-
-    // TODO Implement these methods
-/*    public void available() {
-    	
-    }
-    
-    public void peek() {
-    	
-    }
-    
-    public void flush() {
-    	
-    }
-    
-    public void print() {
-    	
-    }
-    
-    public void println() {
-    	
-    }
-    */
     
     public boolean isConnected() {
     	if(mDevice != null && mFTDIEndpointIN != null && mFTDIEndpointOUT != null) {
@@ -443,7 +426,12 @@ public class FTDriver {
     	int result;
     	boolean ret = false;
 		int index = 0; // for devices that have multiple IFs,need to modify.
-    
+
+		if(isCDC) {
+//    		setCdcBitmode();
+    		return true;
+    	}
+
 		if(enable){
 	    	val = (short)bitmask;
 	    	val |= (mode << 8);
@@ -461,9 +449,25 @@ public class FTDriver {
 		return ret;
     }
         
+    private void setCdcBaudrate(int baudrate) {
+    	byte[] baudByte = new byte[4];
+    	
+    	baudByte[0] = (byte) (baudrate & 0x000000FF);
+    	baudByte[1] = (byte)((baudrate & 0x0000FF00) >> 8 );
+    	baudByte[2] = (byte)((baudrate & 0x00FF0000) >> 16);
+    	baudByte[3] = (byte)((baudrate & 0xFF000000) >> 24);
+		mDeviceConnection.controlTransfer(0x21, 0x20, 0, 0, new byte[] { baudByte[0],
+				baudByte[1], baudByte[2], baudByte[3], 0x00, 0x00, 0x08 }, 7, 0);
+    }
+    
     public boolean setBaudrate(int baudrate, int channel) {
     	if(mDeviceConnection == null) {
     		return false;
+    	}
+    	
+    	if(isCDC) {
+    		setCdcBaudrate(baudrate);
+    		return true;
     	}
 		int baud = calcFTDIBaudrate(baudrate, mSelectedDeviceInfo.mType);
 		int index = 0;
@@ -502,16 +506,18 @@ public class FTDriver {
 	}
 
 	// FIXME ISSUE: When re-connect usb, cannot acvive cdc.
-	// support only 9600bps
-	private void initCdcAcm(UsbDeviceConnection conn) {
+	private void initCdcAcm(UsbDeviceConnection conn, int baudrate) {
 		int ret;
-		if (!conn.claimInterface(mDevice.getInterface(1), true)) {
+		if (!conn.claimInterface(mInterface[0], true)) {
 			return;
 		}
+
 		
 		ret = conn.controlTransfer(0x21, 0x22, 0x00, 0, null, 0, 0);
-		ret = conn.controlTransfer(0x21, 0x20, 0, 0, new byte[] { (byte) 0x80,
-				0x25, 0x00, 0x00, 0x00, 0x00, 0x08 }, 7, 0);
+		
+		setCdcBaudrate(baudrate);
+//		ret = conn.controlTransfer(0x21, 0x20, 0, 0, new byte[] { (byte) 0x80,
+//				0x25, 0x00, 0x00, 0x00, 0x00, 0x08 }, 7, 0);
 
 		isCDC = true;
 	}
@@ -535,6 +541,11 @@ public class FTDriver {
 		if(mDeviceConnection == null) {
 			return false;
 		}
+		
+		if(isCDC) {
+//    		setCdcFlowControl();
+    		return true;
+    	}
 		
 		if(CH_A > channel || channel > CH_D) {
 			return false;
@@ -571,6 +582,11 @@ public class FTDriver {
 			return false;
 		}
 		
+		if(isCDC) {
+//    		setCdcSerialPropertyToChip();
+    		return true;
+    	}
+
 		if(CH_A > channel || channel > CH_D) {
 			return false;
 		}
@@ -744,6 +760,27 @@ public class FTDriver {
 		return divisor;
 	}
 
+	private boolean getCdcEndpoint() {
+		UsbEndpoint ep;
+		
+		if(mInterface[0] == null) {
+			return false;
+		}
+		for(int i=0; i<2; ++i) {
+			ep = mInterface[0].getEndpoint(i);
+			if(ep.getDirection() == UsbConstants.USB_DIR_IN) {
+				mFTDIEndpointIN[0] = ep;
+			} else {
+				mFTDIEndpointOUT[0] = ep;
+			}
+		}
+		if(mFTDIEndpointIN == null || mFTDIEndpointOUT == null) {
+			return false;
+		}
+		return true;
+		
+	}
+	
 	private boolean setFTDIEndpoints(UsbInterface[] intf, int portNum) {
 		UsbEndpoint epIn;
 		UsbEndpoint epOut;
@@ -752,20 +789,15 @@ public class FTDriver {
 			return false;
 		}
 		
-		if(isCDC) {
-			mFTDIEndpointIN[0] = intf[1].getEndpoint(1);
-			mFTDIEndpointOUT[0] = intf[1].getEndpoint(0);
-		} else {
-			for(int i=0; i<portNum; ++i) {
-				epIn = intf[i].getEndpoint(0);
-				epOut = intf[i].getEndpoint(1);
+		for(int i=0; i<portNum; ++i) {
+			epIn = intf[i].getEndpoint(0);
+			epOut = intf[i].getEndpoint(1);
 			
-				if(epIn != null && epOut != null) {
-					mFTDIEndpointIN[i] = epIn;
-					mFTDIEndpointOUT[i] = epOut;
-				} else {
-					return false;
-				}
+			if(epIn != null && epOut != null) {
+				mFTDIEndpointIN[i] = epIn;
+				mFTDIEndpointOUT[i] = epOut;
+			} else {
+				return false;
 			}
 		}
 		return true;
@@ -822,9 +854,12 @@ public class FTDriver {
 		for(UsbId usbids : IDS){
 			// TODO: Refactor it for CDC
 			if(usbids.mVid == 0 && usbids.mPid == 0 && device.getDeviceClass() == UsbConstants.USB_CLASS_COMM) {
-				intf[0] = device.getInterface(0);
-				intf[1] = device.getInterface(1);
-				if(intf[0] == null || intf[1] == null) {
+				for(int i =0; i < device.getInterfaceCount(); ++i) {
+					if(device.getInterface(i).getInterfaceClass() == UsbConstants.USB_CLASS_CDC_DATA) {
+						intf[0] = device.getInterface(i);
+					}
+				}
+				if(intf[0] == null) {
 					return false;
 				}
 			} else {
