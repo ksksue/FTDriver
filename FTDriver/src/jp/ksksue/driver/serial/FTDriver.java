@@ -11,7 +11,6 @@ package jp.ksksue.driver.serial;
  * thanks to @titoi2 @darkukll @yakagawa @yishii @hyokota555 @juju_suu
  */
 
-import android.annotation.SuppressLint;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.hardware.usb.UsbDevice;
@@ -23,7 +22,7 @@ import android.hardware.usb.UsbConstants;
 import android.util.Log;
 
 enum FTDICHIPTYPE {
-    FT232RL, FT2232C, FT232H, FT2232D, FT2232HL, FT4232HL, FT230X, CDC;
+    FT232RL, FT2232C, FT232H, FT2232D, FT2232HL, FT4232HL, FT230X, CDC, NONE;
 }
 
 class UsbId {
@@ -64,6 +63,9 @@ public class FTDriver {
             // @hyokota555
             new UsbId(0x0000, 0x0000, 0, 1, FTDICHIPTYPE.CDC), // CDC
     };
+    
+    private static final UsbId IGNORE_IDS = new UsbId(0x1519, 0x0000, 0, 1, FTDICHIPTYPE.NONE);
+    
     private UsbId mSelectedDeviceInfo;
 
     public static final int CH_A = 1;
@@ -838,6 +840,9 @@ public class FTDriver {
                 // TODO: support any connections(current version find a first
                 // device)
                 for (UsbId usbids : IDS) {
+                    if(device.getVendorId() == IGNORE_IDS.mVid ) {
+                        break;
+                    }
                     // TODO: Refactor it for CDC
                     if ((usbids.mVid == 0 && usbids.mPid == 0 && device
                             .getDeviceClass() == UsbConstants.USB_CLASS_COMM) // CDC
@@ -867,6 +872,11 @@ public class FTDriver {
     private boolean getUsbInterfaces(UsbDevice device) {
         UsbInterface[] intf = new UsbInterface[FTDI_MAX_INTERFACE_NUM];
         for (UsbId usbids : IDS) {
+            
+            if(device.getVendorId() == IGNORE_IDS.mVid ) {
+                break;
+            }
+            
             // TODO: Refactor it for CDC
             if (usbids.mVid == 0 && usbids.mPid == 0
                     && device.getDeviceClass() == UsbConstants.USB_CLASS_COMM) {
