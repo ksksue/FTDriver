@@ -61,6 +61,7 @@ public class FTDriver {
             new UsbId(0x0584, 0xB020, 4, 1, FTDICHIPTYPE.FT232RL), // REX-USB60F
             // thanks to
             // @hyokota555
+            new UsbId(0x0584, 0xB02F, 4, 1, FTDICHIPTYPE.FT232RL), // REX-USB60MI
             new UsbId(0x0000, 0x0000, 0, 1, FTDICHIPTYPE.CDC), // CDC
     };
     
