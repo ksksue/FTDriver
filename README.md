@@ -6,8 +6,9 @@ USB Serial Driver using Android USB Host API
 - Java source code
 - **no root**
 - baudrate : 9600 - 230400 (be able to setting immediate baudrate number)
-- support FTDI chips (FT232RL, FT232H, FT2232C/D/HL, FT4232HL FT230X, REX-USB60F(FT232BL) checked)
+- support FTDI chips (FT232RL, FT232H, FT2232C/D/HL, FT4232HL FT230X, REX-USB60F/MI(FT232BL) checked)
 - support any channels (FT2232X:2ch, FT4232X:4ch)
+- support CDC-ACM(beta)
 - like Arduino library's interface
 
 Connection
@@ -15,7 +16,7 @@ Connection
     Android [USB A port] --- [USB B port] FTDI Chip
 - requirement
  - Android : version 3.1 or upper and have an USB host port
- - Board : FTDI Chip
+ - Board : FTDI Chip or CDC-ACM(beta)
 
 Projects
 -----
@@ -85,7 +86,7 @@ About me
 ---
 ![twitter](http://d.hatena.ne.jp/images/icon-twitter.png "twitter") [@ksksue](http://twitter.com/#!/ksksue "twitter @ksksue")  
 ![画像1](http://a1.twimg.com/profile_images/549237316/twt_bigger.jpg "icon")  
-Web page : Geekle Board - [http://d.hatena.ne.jp/ksksue/](http://d.hatena.ne.jp/ksksue/ "Geekle Board")  
+Web page : Geekle Board - [http://ksksue.com/wiki/](http://ksksue.com/wiki/ "Geekle Board")  
 
 License
 ----------
