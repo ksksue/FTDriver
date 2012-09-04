@@ -1,0 +1,5 @@
+FTDriver
+Copyright 2011-2012 Keisuke SUZUKI
+
+The original software is available from
+https://github.com/ksksue/FTDriver
