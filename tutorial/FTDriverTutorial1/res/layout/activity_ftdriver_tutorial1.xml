@@ -1,0 +1,48 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/LinearLayout1"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+
+    <Button
+        android:id="@+id/btnBegin"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+		android:onClick="onBeginClick"
+        android:text="Begin" />
+
+    <Button
+        android:id="@+id/btnRead"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="onReadClick"
+        android:text="Read" />
+
+    <Button
+        android:id="@+id/btnWrite"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="onWriteClick"
+        android:text="Write" />
+
+    <Button
+        android:id="@+id/btnEnd"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="onEndClick"
+        android:text="End" />
+
+    <TextView
+        android:id="@+id/tvLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Monitor" />
+
+    <TextView
+        android:id="@+id/tvMonitor"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="" />
+
+</LinearLayout>
