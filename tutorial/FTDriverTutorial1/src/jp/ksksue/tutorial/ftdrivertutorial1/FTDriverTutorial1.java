@@ -1,3 +1,10 @@
+/*
+ * FTDriver Tutorial 1
+ * 
+ * You can learn usage of begin(),end(),read(),write().
+ * Check [FTDriver] Tag.
+ */
+
 package jp.ksksue.tutorial.ftdrivertutorial1;
 
 import jp.ksksue.driver.serial.FTDriver;
@@ -13,14 +20,12 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-/*
- * very very simple code
- * Run in Wifi debug mode
- */
-
 public class FTDriverTutorial1 extends Activity {
 
+    // [FTDriver] Object
     FTDriver mSerial;
+    
+    // [FTDriver] Permission String
     private static final String ACTION_USB_PERMISSION =
             "jp.ksksue.tutorial.USB_PERMISSION";
     
@@ -85,7 +90,7 @@ public class FTDriverTutorial1 extends Activity {
     public void onReadClick(View view) {
         int i,len;
 
-        // [FTDriver] Read Buffer
+        // [FTDriver] Create Read Buffer
         byte[] rbuf = new byte[4096]; // 1byte <--slow-- [Transfer Speed] --fast--> 4096 byte
 
         // [FTDriver] Read from USB Serial
@@ -98,14 +103,17 @@ public class FTDriverTutorial1 extends Activity {
     }
     
     public void onWriteClick(View view) {
-        // [FTDriver] Wirte to USB Serial
         String wbuf = "FTDriver Test.";
+
+        // [FTDriver] Wirte to USB Serial
         mSerial.write(wbuf.getBytes());
         
     }
     
     public void onEndClick(View view) {
+        // [FTDriver] Close USB Serial
         mSerial.end();
+        
         btnBegin.setEnabled(true);
         btnRead.setEnabled(false);
         btnWrite.setEnabled(false);
