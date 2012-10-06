@@ -259,7 +259,7 @@ public class FTDriver {
 
         if (isCDC) {
             int len = mDeviceConnection.bulkTransfer(mFTDIEndpointIN[channel],
-                    buf, buf.length, 0); // RX
+                    buf, buf.length, 100); // RX
             if (len < 0) {
                 len = 0;
             }
