@@ -294,6 +294,7 @@ public class FTDriver {
                 updateReadCount = true;
                 /* end of USB read packet loss checker */
             }
+            mReadbufOffset += buf.length;
             mReadbufRemain -= buf.length;
             return buf.length;
         }
