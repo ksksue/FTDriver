@@ -379,12 +379,7 @@ public class FTDriver {
      * @return written length
      */
     public int write(String str) {
-        char[] charArray = str.toCharArray();
-        byte outBuf[] = new byte[charArray.length];
-        for (int i = 0; i < str.length(); i++) {
-            outBuf[i] = (byte) charArray[i];
-        }
-        return write(outBuf);
+        return write(str.getBytes());
     }
     
     /**
