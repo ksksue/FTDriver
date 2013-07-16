@@ -9,6 +9,7 @@ package jp.ksksue.driver.serial;
  * http://www.apache.org/licenses/LICENSE-2.0
  * 
  * thanks to @titoi2 @darkukll @yakagawa @yishii @hyokota555 @juju_suu
+ * 
  */
 
 import android.app.PendingIntent;
@@ -43,13 +44,14 @@ class UsbId {
 
 public class FTDriver {
 
+    private static final boolean LOCAL_LOGV = true;
+
     /*
      * USB read packet loss checker If true then checking USB read packet loss
      * and displaying messages to Logcat requirement : microcomputer send
      * 01234567890123456789012... to Android
      */
     private boolean mReadPakcetChecker = false;
-
     private static final UsbId[] IDS = {
             new UsbId(0x0403, 0x6001, 6, 1, FTDICHIPTYPE.FT232RL), // FT232RL
             new UsbId(0x0403, 0x6014, 9, 1, FTDICHIPTYPE.FT232H), // FT232H
@@ -452,6 +454,14 @@ public class FTDriver {
         return buffer[0];
     }
 
+    public String getSerialNumber() {
+        if(mDeviceConnection == null) {
+            return "";
+        } else {
+            return mDeviceConnection.getSerial();
+        }
+    }
+
     public boolean setBitmode(boolean enable, int bitmask, int mode) {
         short val = 0;
         int result;
@@ -595,10 +605,19 @@ public class FTDriver {
                 || flowControl == FTDI_SET_FLOW_RTS_CTS_HS
                 || flowControl == FTDI_SET_FLOW_DTR_DSR_HS
                 || flowControl == FTDI_SET_FLOW_XON_XOFF_HS) {
-            if (mDeviceConnection.controlTransfer(0x40, 0x02, 0x0000, channel,
+            int mask=0;
+            if(flowControl == FTDI_SET_FLOW_RTS_CTS_HS) {
+                mask = 0x1;
+            }
+            if(flowControl == FTDI_SET_FLOW_DTR_DSR_HS) {
+                mask |= 0x2;
+            }
+            int send = flowControl | mask ;
+            if (mDeviceConnection.controlTransfer(0x40, 0x01, send, channel,
                     null, 0, 0) < 0) {
                 return false;
             } else {
+                if(LOCAL_LOGV){ Log.v(TAG, "setFlowControl : " + toHexStr(send)); }
                 return true;
             }
         } else {
@@ -631,6 +650,7 @@ public class FTDriver {
                 mSerialProperty[channel - 1], channel, null, 0, 0) < 0) {
             return false;
         } else {
+            if(LOCAL_LOGV){ Log.v(TAG, "setSerialPropertyToChip : " + toHexStr(mSerialProperty[channel-1])); }
             return true;
         }
     }
@@ -647,6 +667,7 @@ public class FTDriver {
         if ((0 < numOfDataBit) || (numOfDataBit <= 8)) {
             mSerialProperty[channel - 1] = (mSerialProperty[channel - 1] & 0xFFF0)
                     | (numOfDataBit & 0x000F);
+            if(LOCAL_LOGV){ Log.v(TAG, "setSerialPropertyDataBit : " + toHexStr(mSerialProperty[channel-1])); }
             return true;
         } else {
             return false;
@@ -671,6 +692,7 @@ public class FTDriver {
                 || parity == FTDI_SET_DATA_PARITY_SPACE) {
             mSerialProperty[channel - 1] = (mSerialProperty[channel - 1] & 0xF8FF)
                     | (parity & 0x0700);
+            if(LOCAL_LOGV){ Log.v(TAG, "setSerialPropertyParity : " + toHexStr(mSerialProperty[channel-1])); }
             return true;
         } else {
             return false;
@@ -692,6 +714,7 @@ public class FTDriver {
                 || stopBits == FTDI_SET_DATA_STOP_BITS_2) {
             mSerialProperty[channel - 1] = (mSerialProperty[channel - 1] & 0xE7FF)
                     | (stopBits & 0x1800);
+            if(LOCAL_LOGV){ Log.v(TAG, "setSerialPropertyStopBits : " + toHexStr(mSerialProperty[channel-1])); }
             return true;
         } else {
             return false;
@@ -710,6 +733,7 @@ public class FTDriver {
         if (tx == FTDI_SET_NOBREAK || tx == FTDI_SET_BREAK) {
             mSerialProperty[channel - 1] = (mSerialProperty[channel - 1] & 0xBFFF)
                     | (tx & 0x4000);
+            if(LOCAL_LOGV){ Log.v(TAG, "setSerialPropertyBreak : " + toHexStr(mSerialProperty[channel-1])); }
             return true;
         } else {
             return false;
@@ -835,32 +859,33 @@ public class FTDriver {
             UsbDeviceConnection connection = mManager.openDevice(device);
             if (connection != null) {
                 Log.d(TAG, "open succeeded");
-                // if (connection.claimInterface(intf, false)) {
-                Log.d(TAG, "claim interface succeeded");
+                if (connection.claimInterface(intf, false)) {
+                    Log.d(TAG, "claim interface succeeded");
 
-                // TODO: support any connections(current version find a first
-                // device)
-                for (UsbId usbids : IDS) {
-                    if(device.getVendorId() == IGNORE_IDS.mVid ) {
-                        break;
+                    // TODO: support any connections(current version find a
+                    // first
+                    // device)
+                    for (UsbId usbids : IDS) {
+                        if (device.getVendorId() == IGNORE_IDS.mVid) {
+                            break;
+                        }
+                        // TODO: Refactor it for CDC
+                        if ((usbids.mVid == 0 && usbids.mPid == 0 && device
+                                .getDeviceClass() == UsbConstants.USB_CLASS_COMM) // CDC
+                                || (device.getVendorId() == usbids.mVid && device
+                                        .getProductId() == usbids.mPid)) {
+                            Log.d(TAG, "Vendor ID : " + device.getVendorId());
+                            Log.d(TAG, "Product ID : " + device.getProductId());
+                            mDevice = device;
+                            mDeviceConnection = connection;
+                            mInterface[intfNum] = intf;
+                            return true;
+                        }
                     }
-                    // TODO: Refactor it for CDC
-                    if ((usbids.mVid == 0 && usbids.mPid == 0 && device
-                            .getDeviceClass() == UsbConstants.USB_CLASS_COMM) // CDC
-                            || (device.getVendorId() == usbids.mVid && device
-                                    .getProductId() == usbids.mPid)) {
-                        Log.d(TAG, "Vendor ID : " + device.getVendorId());
-                        Log.d(TAG, "Product ID : " + device.getProductId());
-                        mDevice = device;
-                        mDeviceConnection = connection;
-                        mInterface[intfNum] = intf;
-                        return true;
-                    }
+                } else {
+                    Log.d(TAG,"claim interface failed");
+                    connection.close();
                 }
-                // } else {
-                // Log.d(TAG,"claim interface failed");
-                // connection.close();
-                // }
             } else {
                 Log.d(TAG, "open failed");
             }
@@ -872,6 +897,7 @@ public class FTDriver {
     // find any interfaces and set mInterface
     private boolean getUsbInterfaces(UsbDevice device) {
         UsbInterface[] intf = new UsbInterface[FTDI_MAX_INTERFACE_NUM];
+        boolean ret=false;
         for (UsbId usbids : IDS) {
             
             if(device.getVendorId() == IGNORE_IDS.mVid ) {
@@ -896,7 +922,9 @@ public class FTDriver {
             if (intf[0] != null) {
                 for (int i = 0; i < usbids.mNumOfChannels; ++i) {
                     Log.d(TAG, "Found USB interface " + intf[i]);
-                    setUSBInterface(device, intf[i], i);
+                    if(!setUSBInterface(device, intf[i], i)) {
+                        return false;
+                    }
                     mSelectedDeviceInfo = usbids;
                 }
                 return true;
@@ -983,5 +1011,9 @@ public class FTDriver {
             Log.d(TAG, "USB interface removed");
             setUSBInterface(null, null, 0);
         }
+    }
+    
+    private String toHexStr(int val) {
+        return String.format("0x%04x", val);
     }
 }
