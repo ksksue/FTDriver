@@ -859,7 +859,7 @@ public class FTDriver {
             UsbDeviceConnection connection = mManager.openDevice(device);
             if (connection != null) {
                 Log.d(TAG, "open succeeded");
-                if (connection.claimInterface(intf, false)) {
+                if (connection.claimInterface(intf, true)) {
                     Log.d(TAG, "claim interface succeeded");
 
                     // TODO: support any connections(current version find a
