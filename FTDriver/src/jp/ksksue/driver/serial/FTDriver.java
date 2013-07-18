@@ -846,32 +846,32 @@ public class FTDriver {
             UsbDeviceConnection connection = mManager.openDevice(device);
             if (connection != null) {
                 Log.d(TAG, "open succeeded");
-                // if (connection.claimInterface(intf, false)) {
-                Log.d(TAG, "claim interface succeeded");
+                if (connection.claimInterface(intf, false)) {
+                    Log.d(TAG, "claim interface succeeded");
 
-                // TODO: support any connections(current version find a first
-                // device)
-                for (UsbId usbids : IDS) {
-                    if(device.getVendorId() == IGNORE_IDS.mVid ) {
-                        break;
+                    // TODO: support any connections(current version find a first
+                    // device)
+                    for (UsbId usbids : IDS) {
+                        if(device.getVendorId() == IGNORE_IDS.mVid ) {
+                            break;
+                        }
+                        // TODO: Refactor it for CDC
+                        if ((usbids.mVid == 0 && usbids.mPid == 0 && device
+                                .getDeviceClass() == UsbConstants.USB_CLASS_COMM) // CDC
+                                || (device.getVendorId() == usbids.mVid && device
+                                        .getProductId() == usbids.mPid)) {
+                            Log.d(TAG, "Vendor ID : " + device.getVendorId());
+                            Log.d(TAG, "Product ID : " + device.getProductId());
+                            mDevice = device;
+                            mDeviceConnection = connection;
+                            mInterface[intfNum] = intf;
+                            return true;
+                        }
                     }
-                    // TODO: Refactor it for CDC
-                    if ((usbids.mVid == 0 && usbids.mPid == 0 && device
-                            .getDeviceClass() == UsbConstants.USB_CLASS_COMM) // CDC
-                            || (device.getVendorId() == usbids.mVid && device
-                                    .getProductId() == usbids.mPid)) {
-                        Log.d(TAG, "Vendor ID : " + device.getVendorId());
-                        Log.d(TAG, "Product ID : " + device.getProductId());
-                        mDevice = device;
-                        mDeviceConnection = connection;
-                        mInterface[intfNum] = intf;
-                        return true;
-                    }
+                } else {
+                Log.d(TAG,"claim interface failed");
+                connection.close();
                 }
-                // } else {
-                // Log.d(TAG,"claim interface failed");
-                // connection.close();
-                // }
             } else {
                 Log.d(TAG, "open failed");
             }
