@@ -1,3 +1,13 @@
+
+FTDriver is no more supported.
+====
+We are developing a new USB Serial Driver **"Physicaloid Library".**
+
+Physicaloid Library is FTDriver + Arduino Writer + CP210x Driver and has simple APIs.
+
+[https://github.com/ksksue/PhysicaloidLibrary](https://github.com/ksksue/PhysicaloidLibrary)
+
+
 Android USB Serial Driver
 =====
 
